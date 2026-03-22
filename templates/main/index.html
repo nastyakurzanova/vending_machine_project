@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Главная{% endblock %}
+{% block extra_css %}
+<style>
+    .hero {
+        text-align: center;
+        padding: 3rem 1rem;
+        background: linear-gradient(135deg, rgba(45,212,191,0.1), rgba(15,76,58,0.1));
+        border-radius: 2rem;
+        margin-bottom: 2rem;
+        animation: fadeInUp 0.8s ease;
+    }
+    .hero h1 {
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, #FFFFFF, #2dd4bf);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin-bottom: 1rem;
+    }
+    .hero p {
+        font-size: 1.1rem;
+        color: #cbd5ff;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: rgba(18, 25, 45, 0.7);
+        backdrop-filter: blur(10px);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        border: 1px solid rgba(45,212,191,0.3);
+        transition: transform 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        border-color: #2dd4bf;
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2dd4bf;
+        margin: 0.5rem 0;
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        color: #a0b3d9;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        color: #2dd4bf;
+        opacity: 0.8;
+    }
+    .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .step-card {
+        background: rgba(18, 25, 45, 0.5);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    .step-number {
+        width: 40px;
+        height: 40px;
+        background: #2dd4bf;
+        color: #0a0f1f;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .feature-card {
+        background: rgba(18, 25, 45, 0.5);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    .feature-icon {
+        font-size: 2.5rem;
+        color: #2dd4bf;
+        margin-bottom: 1rem;
+    }
+    .cta-button {
+        background: linear-gradient(105deg, #1e2b4f, #0f1a30);
+        border: 1px solid #2dd4bf;
+        padding: 0.8rem 2rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        color: #e2f0ff;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .cta-button:hover {
+        transform: scale(1.05);
+        background: #0f4c3a;
+        box-shadow: 0 0 15px rgba(45,212,191,0.5);
+    }
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1><i class="fas fa-robot"></i> Модуль торгового автомата</h1>
+    <p>Интеллектуальный помощник для тестирования торговых стратегий и совершения сделок на финансовых рынках</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-number">{{ users_count }}</div>
+        <div class="stat-label">Активных трейдеров</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-number">{{ training_trades_count }}</div>
+        <div class="stat-label">Тренировочных сделок</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-number">{{ real_trades_count }}</div>
+        <div class="stat-label">Реальных сделок</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-rocket"></i>
+        <h2>Быстрый старт</h2>
+    </div>
+    <div class="steps-grid">
+        <div class="step-card">
+            <div class="step-number">1</div>
+            <h3>Выберите котировку</h3>
+            <p>Ознакомьтесь с доступными активами и выберите интересующий</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">2</div>
+            <h3>Настройте параметры</h3>
+            <p>Укажите дату, объём, актив и цену для сделки</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">3</div>
+            <h3>Проведите тренировку</h3>
+            <p>Постройте прогноз, совершите виртуальную сделку и оцените результат</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-gem"></i>
+        <h2>Почему выбирают нас</h2>
+    </div>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-brain"></i></div>
+            <h3>Интеллектуальный прогноз</h3>
+            <p>Алгоритмы машинного обучения помогают предсказывать движение цены</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+            <h3>Визуализация данных</h3>
+            <p>Интерактивные графики и понятная аналитика для принятия решений</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+            <h3>Безопасное тестирование</h3>
+            <p>Тренировочный режим без риска потери реальных средств</p>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="text-align: center;">
+    <div class="card-header">
+        <i class="fas fa-hand-pointer"></i>
+        <h2>Готовы начать?</h2>
+    </div>
+    {% if not user.is_authenticated %}
+        <p>Присоединяйтесь к сообществу трейдеров уже сегодня</p>
+        <div class="flex-btns" style="justify-content: center;">
+            <a href="{% url 'users:register' %}" class="cta-button"><i class="fas fa-user-plus"></i> Регистрация</a>
+            <a href="{% url 'users:login' %}" class="cta-button"><i class="fas fa-sign-in-alt"></i> Вход</a>
+        </div>
+    {% else %}
+        <p>Откройте для себя новые возможности торговли</p>
+        <div class="flex-btns" style="justify-content: center;">
+            <a href="{% url 'quotes:quote_list' %}" class="cta-button"><i class="fas fa-chart-line"></i> Перейти к котировкам</a>
+            <a href="{% url 'quotes:training' %}" class="cta-button"><i class="fas fa-chart-simple"></i> Тренировка</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

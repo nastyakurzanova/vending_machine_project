@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block title %}Тренировочный режим{% endblock %}
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .advice-box {
+        background: rgba(45,212,191,0.1);
+        border-left: 4px solid #2dd4bf;
+        border-radius: 1rem;
+        padding: 1rem 1.5rem;
+        margin: 1rem 0;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .advice-box i {
+        font-size: 1.5rem;
+        color: #2dd4bf;
+    }
+    .live-update {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: rgba(18, 25, 45, 0.5);
+        border-radius: 1rem;
+        text-align: center;
+    }
+    .live-price {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #2dd4bf;
+    }
+    .form-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .field-wrapper {
+        margin-bottom: 0.5rem;
+    }
+    .field-wrapper label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #a0b3d9;
+        margin-bottom: 0.2rem;
+    }
+    .field-wrapper input, .field-wrapper select {
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.6rem 0.9rem;
+        width: 100%;
+        color: white;
+    }
+    .field-wrapper input:focus, .field-wrapper select:focus {
+        border-color: #2dd4bf;
+        outline: none;
+    }
+    /* Стили для радиокнопок */
+    .radio-group {
+        display: flex;
+        gap: 1.5rem;
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.6rem 0.9rem;
+    }
+    .radio-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        color: #eef2ff;
+    }
+    .radio-option input {
+        width: auto;
+        margin: 0;
+        accent-color: #2dd4bf;
+    }
+    .btn-trade {
+        background: linear-gradient(105deg, #1e2b4f, #0f1a30);
+        border: 1px solid #2dd4bf;
+        padding: 0.7rem 1.4rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    .btn-trade:hover {
+        background: #0f4c3a;
+        transform: scale(1.02);
+    }
+    .param-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-chart-line"></i>
+        <h2>График прогноза для {{ quote.name }}</h2>
+    </div>
+    <canvas id="forecastChart" width="400" height="200"></canvas>
+    <div class="graph-placeholder">
+        <p><i class="fas fa-chart-simple"></i> Прогноз на основе выбранных параметров (временной период: {{ timeframe }})</p>
+    </div>
+</div>
+
+<div class="advice-box">
+    <i class="fas {% if graph_data|last > graph_data|first %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+    {% if graph_data|last > graph_data|first %}
+        <span>Прогноз положительный. Рекомендуется покупка.</span>
+    {% else %}
+        <span>Прогноз отрицательный. Рекомендуется продажа.</span>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-calculator"></i>
+        <h2>Параметры сделки</h2>
+    </div>
+    <div class="param-row">
+        <div class="param-field"><label>Котировка</label><div class="mock-input">{{ quote.name }}</div></div>
+        <div class="param-field"><label>Дата</label><div class="mock-input">{{ date }}</div></div>
+        <div class="param-field"><label>Объём</label><div class="mock-input">{{ volume }}</div></div>
+        <div class="param-field"><label>Актив</label><div class="mock-input">{{ asset }}</div></div>
+        <div class="param-field"><label>Цена</label><div class="mock-input">{{ price }}</div></div>
+    </div>
+
+    <form method="post" id="trainingForm">
+        {% csrf_token %}
+        <div class="form-fields">
+            <div class="field-wrapper">
+                <label>{{ form.trade_type.label }}</label>
+                <div class="radio-group">
+                    {% for radio in form.trade_type %}
+                        <label class="radio-option">
+                            {{ radio.tag }} {{ radio.choice_label }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="field-wrapper">
+                <label>{{ form.volume.label }}</label>
+                {{ form.volume }}
+            </div>
+            <div class="field-wrapper">
+                <label>{{ form.price.label }}</label>
+                {{ form.price }}
+            </div>
+        </div>
+        <button type="submit" class="btn-trade">
+            <i class="fas fa-hand-holding-usd"></i> Совершить тренировочную сделку
+        </button>
+    </form>
+</div>
+
+<div class="live-update">
+    <p><i class="fas fa-chart-simple"></i> Текущая цена в реальном времени</p>
+    <div class="live-price" id="livePrice">{{ price }}</div>
+    <button id="stopLive" class="mock-button" style="margin-top: 0.5rem;">
+        <i class="fas fa-pause"></i> Остановить обновление
+    </button>
+</div>
+
+<script>
+    // Получаем данные из контекста
+    const graphData = {{ graph_data|safe }};
+    const initialPrice = {{ price }};
+    const initialLabels = graphData.map(point => point.date);
+    const initialPrices = graphData.map(point => point.price);
+
+    // Создаём график
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    window.myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: initialLabels,
+            datasets: [{
+                label: 'Прогнозная цена',
+                data: initialPrices,
+                borderColor: '#2dd4bf',
+                tension: 0.1,
+                fill: false,
+                pointBackgroundColor: '#2dd4bf',
+                pointBorderColor: '#fff',
+                pointRadius: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: { mode: 'index', intersect: false },
+                legend: { position: 'top', labels: { color: '#eef2ff' } }
+            },
+            scales: {
+                x: { ticks: { color: '#a0b3d9' }, grid: { color: '#1e2a44' } },
+                y: { ticks: { color: '#a0b3d9' }, grid: { color: '#1e2a44' } }
+            }
+        }
+    });
+
+    // Обновление цены в реальном времени
+    let interval;
+    let currentPrice = initialPrice;
+    const priceSpan = document.getElementById('livePrice');
+    const chart = window.myChart;
+
+    function updatePrice() {
+        const change = (Math.random() - 0.5) * 0.02;
+        currentPrice = currentPrice * (1 + change);
+        priceSpan.innerText = currentPrice.toFixed(4);
+
+        const labels = chart.data.labels;
+        const prices = chart.data.datasets[0].data;
+        const newDate = new Date().toLocaleDateString();
+        labels.push(newDate);
+        prices.push(currentPrice);
+        if (labels.length > 20) {
+            labels.shift();
+            prices.shift();
+        }
+        chart.update();
+    }
+
+    interval = setInterval(updatePrice, 2000);
+    document.getElementById('stopLive').onclick = () => {
+        clearInterval(interval);
+        interval = null;
+        document.getElementById('stopLive').innerHTML = '<i class="fas fa-play"></i> Возобновить';
+        document.getElementById('stopLive').onclick = () => {
+            interval = setInterval(updatePrice, 2000);
+            document.getElementById('stopLive').innerHTML = '<i class="fas fa-pause"></i> Остановить обновление';
+        };
+    };
+</script>
+{% endblock %}

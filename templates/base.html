@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Модуль торгового автомата{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+    <style>
+        /* Корректировка позиционирования частиц */
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 10% 20%, #0a0f1f, #03060c);
+        }
+        /* Контент должен быть выше частиц */
+        .container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1;
+        }
+        .footer-note {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #5f7f9e;
+            border-top: 1px solid #1f2b41;
+            padding-top: 1.5rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Контейнер для частиц -->
+    <div id="particles-js"></div>
+
+    <div class="container">
+        <nav class="navbar">
+            <div class="logo">
+                <a href="{% url 'main:index' %}">TradeVending</a>
+            </div>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'quotes:quote_list' %}">Котировки</a>
+                    <a href="{% url 'quotes:time_settings' %}">Настройки</a>
+                    <a href="{% url 'quotes:training' %}">Тренировка</a>
+                    <a href="{% url 'quotes:real_trade' %}">Оформить сделку</a>
+                    <a href="{% url 'quotes:training_history' %}">История</a>
+                    <a href="{% url 'users:profile' %}">
+                <i class="fas fa-user"></i> {{ user.username }}</a>
+                    <div class="auth-buttons">
+                        <a href="{% url 'users:logout' %}" class="auth-link">Выйти</a>
+                    </div>
+                {% else %}
+                    <div class="auth-buttons">
+                        <a href="{% url 'users:login' %}" class="auth-link">Войти</a>
+                        <a href="{% url 'users:register' %}" class="auth-link">Регистрация</a>
+                    </div>
+                {% endif %}
+            </div>
+        </nav>
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <main>
+            {% block content %}
+            {% endblock %}
+        </main>
+        <div class="footer-note">
+            Модуль торгового автомата — Бурдуковский Иван Олегович
+        </div>
+    </div>
+
+    <!-- Подключение particles.js с CDN -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: '#2dd4bf' },
+                shape: { type: 'circle', stroke: { width: 0, color: '#000000' } },
+                opacity: { value: 0.5, random: false, anim: { enable: false } },
+                size: { value: 3, random: true, anim: { enable: false } },
+                line_linked: { enable: true, distance: 150, color: '#2dd4bf', opacity: 0.2, width: 1 },
+                move: { enable: true, speed: 2, direction: 'none', random: false, straight: false, out_mode: 'out' }
+            },
+            interactivity: {
+                detect_on: 'canvas',
+                events: { onhover: { enable: true, mode: 'repulse' }, onclick: { enable: true, mode: 'push' }, resize: true },
+                modes: { repulse: { distance: 100, duration: 0.4 }, push: { particles_nb: 4 } }
+            },
+            retina_detect: true
+        });
+    </script>
+    <script>
+    // Запрос разрешения на уведомления при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        if ('Notification' in window) {
+            Notification.requestPermission();
+        }
+    });
+
+    // Функция для показа уведомления
+    function showNotification(title, body, type = 'success') {
+        if (!('Notification' in window)) {
+            console.warn('Браузер не поддерживает уведомления');
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            const options = {
+                body: body,
+                icon: '/static/images/icon.png', // замените на свой путь к иконке
+                badge: '/static/images/badge.png'
+            };
+            new Notification(title, options);
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    const options = {
+                        body: body,
+                        icon: '/static/images/icon.png'
+                    };
+                    new Notification(title, options);
+                }
+            });
+        }
+    }
+
+    // Проверяем сообщения Django и показываем уведомления
+    (function checkMessagesForNotifications() {
+        const messages = document.querySelectorAll('.alert');
+        messages.forEach(msg => {
+            const text = msg.innerText;
+            if (text.includes('успешно')) {
+                showNotification('Успех!', text, 'success');
+            } else if (text.includes('ошибка') || text.includes('Ошибка')) {
+                showNotification('Ошибка', text, 'error');
+            }
+        });
+    })();
+</script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

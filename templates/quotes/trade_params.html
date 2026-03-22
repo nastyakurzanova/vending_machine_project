@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Параметры сделки{% endblock %}
+{% block extra_css %}
+<style>
+    .param-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+    .param-field {
+        margin-bottom: 0;
+    }
+    .param-field input, .param-field select {
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.7rem 0.9rem;
+        width: 100%;
+        color: white;
+        font-size: 0.9rem;
+    }
+    .param-field input:focus, .param-field select:focus {
+        outline: none;
+        border-color: #2dd4bf;
+        box-shadow: 0 0 8px rgba(45,212,191,0.3);
+    }
+    .param-field label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #a0b3d9;
+        margin-bottom: 6px;
+    }
+    .quote-info {
+        background: rgba(45,212,191,0.1);
+        border-radius: 1rem;
+        padding: 0.8rem 1rem;
+        margin-bottom: 1rem;
+        border-left: 3px solid #2dd4bf;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-sliders-h"></i>
+        <h2>Укажите параметры сделки</h2>
+    </div>
+    {% if quote %}
+        <div class="quote-info">
+            <i class="fas fa-info-circle"></i> Выбранная котировка: <strong>{{ quote.name }}</strong>
+        </div>
+    {% endif %}
+    <form method="post" class="param-form">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="param-field">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <small class="help-text">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="error">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <div class="flex-btns">
+            <button type="submit">
+                <i class="fas fa-check-circle"></i> Применить выбранные пожелания
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

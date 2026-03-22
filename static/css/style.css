@@ -1,0 +1,239 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: radial-gradient(circle at 10% 20%, #0a0f1f, #03060c);
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  color: #eef2ff;
+  line-height: 1.4;
+  min-height: 100vh;
+}
+
+
+.container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* навигация */
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(10, 18, 30, 0.7);
+  border-radius: 3rem;
+  padding: 0.7rem 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(45, 212, 191, 0.2);
+}
+.logo a {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #FFFFFF, #9ad0f5);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  align-items: center;
+}
+.nav-links a {
+  color: #cbd5ff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: 0.2s;
+}
+.nav-links a:hover {
+  color: #2dd4bf;
+}
+.auth-buttons {
+  display: flex;
+  gap: 0.8rem;
+}
+.auth-link {
+  background: rgba(45, 212, 191, 0.15);
+  padding: 0.4rem 1rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  font-size: 0.85rem;
+}
+.auth-link:hover {
+  background: #2dd4bf20;
+}
+
+/* карточки */
+.card {
+  background: rgba(18, 25, 45, 0.65);
+  border-radius: 2rem;
+  border: 1px solid rgba(72, 187, 255, 0.2);
+  padding: 1.5rem 1.6rem;
+  margin-bottom: 1.8rem;
+  transition: 0.2s;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 0.8rem;
+  margin-bottom: 1.3rem;
+}
+.card-header i {
+  font-size: 1.5rem;
+  color: #2dd4bf;
+}
+.card-header h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+/* формы и элементы */
+.param-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+.param-field {
+  flex: 1;
+  min-width: 150px;
+}
+.param-field label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #a0b3d9;
+  margin-bottom: 6px;
+}
+.mock-input, .mock-select {
+  width: 100%;
+  background: #0f172f;
+  border: 1px solid #2d3a5e;
+  padding: 0.7rem 0.9rem;
+  border-radius: 1rem;
+  color: white;
+  font-size: 0.85rem;
+}
+.mock-input:focus, .mock-select:focus {
+  outline: none;
+  border-color: #2dd4bf;
+}
+button, .mock-button {
+  background: linear-gradient(105deg, #1e2b4f, #0f1a30);
+  border: 1px solid rgba(45,212,191,0.5);
+  padding: 0.7rem 1.4rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #e2f0ff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 5px rgba(45,212,191,0);
+}
+button:hover, .mock-button:hover {
+    box-shadow: 0 0 12px rgba(45,212,191,0.6);
+    transform: scale(1.02);
+}
+.quote-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+
+.quote-chip.active, .nav-links a.active {
+    border-image: linear-gradient(45deg, #2dd4bf, #0f4c3a) 1;
+    border-style: solid;
+    border-width: 2px;
+}
+
+.quote-chip {
+  background: #0b1428;
+  border-radius: 40px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  border: 1px solid #2d4a7c;
+  color: #cbd5ff;
+}
+.flex-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 0.8rem;
+}
+.graph-placeholder {
+  background: #07121f;
+  border-radius: 1.2rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  border: 1px solid #2a3c5a;
+}
+.result-box {
+  background: #07111f;
+  border-radius: 1rem;
+  padding: 0.8rem 1rem;
+  font-size: 0.8rem;
+  border-left: 3px solid #2dd4bf;
+  margin: 0.8rem 0;
+}
+.decision-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+hr {
+  border-color: #1e2a44;
+  margin: 1rem 0;
+}
+.footer-note {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #5f7f9e;
+  margin-top: 2rem;
+  border-top: 1px solid #1f2b41;
+  padding-top: 1.5rem;
+}
+.inline-badge {
+  background: #1f2a44;
+  border-radius: 16px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-right: 8px;
+}
+.form-group {
+  margin-bottom: 1.2rem;
+}
+.btn-primary {
+  background: #0f4c3a;
+  border-color: #2dd4bf;
+  width: 100%;
+  justify-content: center;
+}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Список котировок{% endblock %}
+{% block extra_css %}
+<style>
+    .quotes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1rem;
+    }
+    .quote-card {
+        background: rgba(18, 25, 45, 0.7);
+        backdrop-filter: blur(10px);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(45,212,191,0.3);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .quote-card:hover {
+        transform: translateY(-5px);
+        border-color: #2dd4bf;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .quote-icon {
+        font-size: 2rem;
+        color: #2dd4bf;
+        margin-bottom: 1rem;
+    }
+    .quote-name {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .quote-desc {
+        font-size: 0.85rem;
+        color: #a0b3d9;
+        line-height: 1.4;
+    }
+    .quote-link {
+        display: inline-block;
+        margin-top: 1rem;
+        color: #2dd4bf;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .quote-link i {
+        transition: transform 0.2s;
+    }
+    .quote-card:hover .quote-link i {
+        transform: translateX(5px);
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-chart-line"></i>
+        <h2>Доступные котировки</h2>
+    </div>
+    <div class="quotes-grid">
+        {% for quote in quotes %}
+            <div class="quote-card" onclick="location.href='{% url 'quotes:trade_params' quote.id %}'">
+                <div class="quote-icon">
+                    <i class="fas fa-chart-simple"></i>
+                </div>
+                <div class="quote-name">{{ quote.name }}</div>
+                <div class="quote-desc">{{ quote.description|default:"Котировка для торговли" }}</div>
+                <a href="{% url 'quotes:trade_params' quote.id %}" class="quote-link">
+                    Выбрать <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        {% empty %}
+            <p>Котировки пока не добавлены.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

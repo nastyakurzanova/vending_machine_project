@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Настройка временных параметров{% endblock %}
+{% block extra_css %}
+<style>
+    /* Стилизация поля выбора */
+    .param-field select {
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.7rem 0.9rem;
+        width: 100%;
+        color: white;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .param-field select:hover,
+    .param-field select:focus {
+        border-color: #2dd4bf;
+        outline: none;
+        box-shadow: 0 0 8px rgba(45,212,191,0.3);
+    }
+    .param-field label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #a0b3d9;
+        margin-bottom: 6px;
+    }
+    /* Отступы */
+    .card form {
+        margin-top: 1rem;
+    }
+    .param-field {
+        margin-bottom: 1.5rem;
+    }
+    button[type="submit"] {
+        background: linear-gradient(105deg, #1e2b4f, #0f1a30);
+        border: 1px solid #2dd4bf;
+        padding: 0.7rem 1.4rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #e2f0ff;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        width: 100%;
+        justify-content: center;
+    }
+    button[type="submit"]:hover {
+        background: #0f4c3a;
+        transform: scale(1.02);
+        box-shadow: 0 0 12px rgba(45,212,191,0.5);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-clock"></i>
+        <h2>Настройка временных параметров</h2>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="param-field">
+                <label>{{ field.label }}</label>
+                {{ field }}
+            </div>
+        {% endfor %}
+        <button type="submit">
+            <i class="fas fa-save"></i> Сохранить настройки и перейти к тренировке
+        </button>
+    </form>
+</div>
+{% endblock %}

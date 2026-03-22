@@ -1,0 +1,31 @@
+# Виртуальное окружение
+venv/
+env/
+.env
+
+# База данных (если используете SQLite, но у вас PostgreSQL)
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Django
+db.sqlite3
+/staticfiles/
+/media/
+*.log
+
+# Настройки с секретами (вынесите ключи в переменные окружения)
+/vending_machine/local_settings.py
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}История тренировочных сделок{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>История ваших тренировочных сделок</h2>
+    </div>
+    {% if trades %}
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Котировка</th>
+                    <th>Актив</th>
+                    <th>Тип</th>
+                    <th>Объём</th>
+                    <th>Цена входа</th>
+                    <th>Результат</th>
+                    <th>Время создания</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade in trades %}
+                <tr>
+                    <td>{{ trade.date }}</td>
+                    <td>{{ trade.quote.name }}</td>
+                    <td>{{ trade.asset }}</td>
+                    <td>{{ trade.get_trade_type_display }}</td>
+                    <td>{{ trade.volume }}</td>
+                    <td>{{ trade.price }}</td>
+                    <td class="{% if trade.profit_loss > 0 %}positive{% elif trade.profit_loss < 0 %}negative{% else %}neutral{% endif %}">
+                        {{ trade.profit_loss }}
+                    </td>
+                    <td>{{ trade.created_at|date:"d.m.Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>У вас пока нет тренировочных сделок. Перейдите в раздел <a href="{% url 'quotes:training' %}">тренировки</a>, чтобы создать первую.</p>
+    {% endif %}
+</div>
+
+<style>
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+    }
+    .history-table th, .history-table td {
+        padding: 0.7rem 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .history-table th {
+        color: #2dd4bf;
+        font-weight: 600;
+    }
+    .positive { color: #4ade80; }
+    .negative { color: #f87171; }
+    .neutral { color: #a0a3b1; }
+</style>
+{% endblock %}

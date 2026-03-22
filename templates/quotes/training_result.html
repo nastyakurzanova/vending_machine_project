@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Результат тренировочной сделки{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Результат тренировочной сделки</h2>
+    </div>
+    <div class="result-box">
+        <p>Тип сделки: {{ trade.get_trade_type_display }}</p>
+        <p>Объём: {{ trade.volume }}</p>
+        <p>Цена входа: {{ trade.price }}</p>
+        <p>Результат: {{ trade.profit_loss }}</p>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="decision-group">
+            <button type="submit" name="decision" value="accept">Принять решение (перейти к оформлению сделки)</button>
+            <button type="submit" name="decision" value="reject">Отклонить (выбрать другие параметры)</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
