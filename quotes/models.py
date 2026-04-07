@@ -4,6 +4,10 @@ from django.contrib.auth.models import User
 class Quote(models.Model):
     name = models.CharField(max_length=50, unique=True, verbose_name='Название котировки')
     description = models.TextField(blank=True, verbose_name='Описание')
+    current_price = models.DecimalField(
+        max_digits=12, decimal_places=4, default=100.00,
+        verbose_name='Текущая цена'
+    )
 
     def __str__(self):
         return self.name
@@ -11,6 +15,7 @@ class Quote(models.Model):
     class Meta:
         verbose_name = 'Котировка'
         verbose_name_plural = 'Котировки'
+
 
 class TrainingTrade(models.Model):
     TRADE_TYPE_CHOICES = [

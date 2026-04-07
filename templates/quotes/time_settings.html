@@ -20,6 +20,20 @@
         outline: none;
         box-shadow: 0 0 8px rgba(45,212,191,0.3);
     }
+    .radio-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+    .radio-group label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.9rem;
+        text-transform: none;
+        letter-spacing: normal;
+        color: #cbd5e6;
+    }
     .param-field label {
         display: block;
         font-size: 0.75rem;
@@ -68,10 +82,16 @@
     <form method="post">
         {% csrf_token %}
         {% for field in form %}
-            <div class="param-field">
-                <label>{{ field.label }}</label>
+    <div class="param-field">
+        <label>{{ field.label }}</label>
+        {% if field.name == 'algorithm' %}
+            <div class="radio-group">
                 {{ field }}
             </div>
+        {% else %}
+            {{ field }}
+        {% endif %}
+    </div>
         {% endfor %}
         <button type="submit">
             <i class="fas fa-save"></i> Сохранить настройки и перейти к тренировке

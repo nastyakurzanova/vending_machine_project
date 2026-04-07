@@ -15,6 +15,16 @@ class TimeSettingsForm(forms.Form):
         choices=[('1d', '1 день'), ('1w', '1 неделя'), ('1m', '1 месяц')],
         label='Временной период для графика'
     )
+    algorithm = forms.ChoiceField(
+        choices=[
+            ('random', 'Случайный (базовый)'),
+            ('bert_transformer', 'BERT → Transformer (улучшенный метод)')
+        ],
+        label='Алгоритм прогнозирования',
+        initial='random',
+        required=True,
+        widget=forms.RadioSelect
+    )
 
 class TrainingTradeForm(forms.ModelForm):
     class Meta:

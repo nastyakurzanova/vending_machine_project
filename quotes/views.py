@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
 from .models import Quote, TrainingTrade, RealTrade
 from .forms import QuoteSelectForm, TradeParamsForm, TimeSettingsForm, TrainingTradeForm, RealTradeForm
+from .prediction import get_forecaster
 import random
 from datetime import datetime, timedelta
 
@@ -15,6 +17,19 @@ def quote_list(request):
 def training_history(request):
     trades = TrainingTrade.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'quotes/training_history.html', {'trades': trades})
+
+
+@login_required
+def time_settings(request):
+    if request.method == 'POST':
+        form = TimeSettingsForm(request.POST)
+        if form.is_valid():
+            request.session['timeframe'] = form.cleaned_data['timeframe']
+            request.session['algorithm'] = form.cleaned_data['algorithm']   # сохраняем выбранный алгоритм
+            return redirect('quotes:training')
+    else:
+        form = TimeSettingsForm()
+    return render(request, 'quotes/time_settings.html', {'form': form})
 
 @login_required
 def trade_params(request, quote_id=None):
@@ -42,23 +57,12 @@ def trade_params(request, quote_id=None):
     return render(request, 'quotes/trade_params.html', {'form': form, 'quote': quote})
 
 @login_required
-def time_settings(request):
-    if request.method == 'POST':
-        form = TimeSettingsForm(request.POST)
-        if form.is_valid():
-            request.session['timeframe'] = form.cleaned_data['timeframe']
-            return redirect('quotes:training')   # <-- исправлено
-    else:
-        form = TimeSettingsForm()
-    return render(request, 'quotes/time_settings.html', {'form': form})
-
-@login_required
 def training(request):
-    required = ['selected_quote_id', 'trade_date', 'trade_volume', 'trade_asset', 'trade_price', 'timeframe']
+    required = ['selected_quote_id', 'trade_date', 'trade_volume', 'trade_asset', 'trade_price', 'timeframe', 'algorithm']
     for key in required:
         if key not in request.session:
             messages.error(request, 'Сначала заполните все параметры сделки и настройки')
-            return redirect('quotes:quote_list')   # <-- исправлено
+            return redirect('quotes:quote_list')
     
     quote = Quote.objects.get(id=request.session['selected_quote_id'])
     date = request.session['trade_date']
@@ -66,9 +70,16 @@ def training(request):
     asset = request.session['trade_asset']
     price = float(request.session['trade_price'])
     timeframe = request.session['timeframe']
+    algorithm = request.session['algorithm']
     
-    graph_data = generate_forecast(price, timeframe)
+    # Получаем исторические данные (для умного алгоритма) – например, предыдущие сделки по этой котировке
+    historical_prices = list(TrainingTrade.objects.filter(
+        user=request.user, quote=quote
+    ).order_by('-date').values_list('price', flat=True)[:10])  # последние 10 цен
+    historical_prices = [float(p) for p in historical_prices]
     
+    graph_data = generate_forecast(price, timeframe, algorithm, historical_prices)
+
     if request.method == 'POST':
         form = TrainingTradeForm(request.POST)
         if form.is_valid():
@@ -98,6 +109,41 @@ def training(request):
         'form': form,
     }
     return render(request, 'quotes/training.html', context)
+
+@login_required
+def recalc_price_volume(request):
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        quote_id = request.POST.get('quote_id')
+        volume = request.POST.get('volume')
+        price = request.POST.get('price')
+        
+        try:
+            quote = Quote.objects.get(id=quote_id)
+            current_price = float(quote.current_price)
+            # Параметр чувствительности: чем больше, тем слабее влияние объёма на цену
+            sensitivity = 1000.0  
+            
+            if volume is not None and volume != '':
+                # Если введён объём, пересчитываем цену
+                volume = float(volume)
+                # price = current_price * (1 + volume / sensitivity)
+                new_price = round(current_price * (1 + volume / sensitivity), 4)
+                return JsonResponse({'price': new_price, 'volume': volume})
+            
+            elif price is not None and price != '':
+                # Если введена цена, пересчитываем объём
+                price = float(price)
+                # volume = (price / current_price - 1) * sensitivity
+                new_volume = round((price / current_price - 1) * sensitivity, 2)
+                return JsonResponse({'volume': new_volume, 'price': price})
+            
+            else:
+                return JsonResponse({'error': 'Не указаны данные'}, status=400)
+        except Quote.DoesNotExist:
+            return JsonResponse({'error': 'Котировка не найдена'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Неверный запрос'}, status=400)
 
 @login_required
 def training_result(request):
@@ -156,10 +202,8 @@ def real_trade(request):
     return render(request, 'quotes/real_trade.html', {'form': form, 'quote': quote, 'date': date, 'volume': volume, 'asset': asset, 'price': price})
 
 # Вспомогательные функции
-def generate_forecast(current_price, timeframe):
-    points = []
-    delta = 0.05
-    start_date = datetime.now().date()
+def generate_forecast(current_price, timeframe, algorithm='random', historical_data=None):
+    """Генерация прогноза с выбранным алгоритмом"""
     if timeframe == '1d':
         steps = 10
         step_days = 1
@@ -169,10 +213,13 @@ def generate_forecast(current_price, timeframe):
     else:  # '1m'
         steps = 10
         step_days = 30
-    price_val = current_price
-    for i in range(steps):
-        change = random.uniform(-delta, delta)
-        price_val = price_val * (1 + change)
+    
+    forecaster = get_forecaster(algorithm)
+    predicted_prices = forecaster.predict(current_price, steps, step_days, historical_data)
+    
+    start_date = datetime.now().date()
+    points = []
+    for i, price_val in enumerate(predicted_prices):
         date = start_date + timedelta(days=step_days * i)
         points.append({'date': date.strftime('%Y-%m-%d'), 'price': round(price_val, 4)})
     return points

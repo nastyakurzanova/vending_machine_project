@@ -39,6 +39,11 @@
         margin-bottom: 1rem;
         border-left: 3px solid #2dd4bf;
     }
+    .warning {
+        background: rgba(255,100,100,0.1);
+        border-left: 3px solid #ff6464;
+        color: #ffb3b3;
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -50,9 +55,14 @@
     {% if quote %}
         <div class="quote-info">
             <i class="fas fa-info-circle"></i> Выбранная котировка: <strong>{{ quote.name }}</strong>
+            <span style="display: block; font-size: 0.8rem; margin-top: 4px;">Текущая цена: {{ quote.current_price }}</span>
+        </div>
+    {% else %}
+        <div class="quote-info warning">
+            <i class="fas fa-exclamation-triangle"></i> Котировка не выбрана. Пожалуйста, вернитесь к списку и выберите котировку.
         </div>
     {% endif %}
-    <form method="post" class="param-form">
+    <form method="post" class="param-form" id="tradeParamsForm">
         {% csrf_token %}
         {% for field in form %}
             <div class="param-field">
@@ -73,4 +83,97 @@
         </div>
     </form>
 </div>
+
+{% if quote %}
+<script>
+// Функционал пересчёта цены ↔ объём работает только если выбрана котировка
+(function() {
+    const quoteId = {{ quote.id }};
+    const volumeInput = document.getElementById('id_volume');
+    const priceInput = document.getElementById('id_price');
+    let isRecalcLock = false;  // Защита от циклических вызовов
+
+    // Получение CSRF-токена из cookie (Django стандарт)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    function recalcFromVolume() {
+        if (isRecalcLock) return;
+        const volume = volumeInput.value.trim();
+        if (volume === '') return;
+        isRecalcLock = true;
+        fetch("{% url 'quotes:recalc_price_volume' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            body: new URLSearchParams({
+                'quote_id': quoteId,
+                'volume': volume
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.price !== undefined) {
+                priceInput.value = data.price;
+            }
+            isRecalcLock = false;
+        })
+        .catch(error => {
+            console.error('Ошибка пересчёта цены:', error);
+            isRecalcLock = false;
+        });
+    }
+
+    function recalcFromPrice() {
+        if (isRecalcLock) return;
+        const price = priceInput.value.trim();
+        if (price === '') return;
+        isRecalcLock = true;
+        fetch("{% url 'quotes:recalc_price_volume' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            body: new URLSearchParams({
+                'quote_id': quoteId,
+                'price': price
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.volume !== undefined) {
+                volumeInput.value = data.volume;
+            }
+            isRecalcLock = false;
+        })
+        .catch(error => {
+            console.error('Ошибка пересчёта объёма:', error);
+            isRecalcLock = false;
+        });
+    }
+
+    // Подключаем обработчики событий
+    volumeInput.addEventListener('input', recalcFromVolume);
+    priceInput.addEventListener('input', recalcFromPrice);
+})();
+</script>
+{% endif %}
 {% endblock %}

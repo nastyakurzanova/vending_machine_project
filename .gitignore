@@ -29,3 +29,24 @@ db.sqlite3
 # OS
 .DS_Store
 Thumbs.db
+
+# База данных
+db.sqlite3
+
+# Файлы настроек с секретами
+.env
+*.env
+
+# Логи
+*.log
+
+# Статика (если собирается отдельно)
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+
+# Файлы миграций (по желанию – можно включить, но часто их коммитят)
+# */migrations/*.py
+# !*/migrations/__init__.py

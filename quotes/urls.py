@@ -9,6 +9,7 @@ urlpatterns = [
     path('trade_params/', views.trade_params, name='trade_params_no_quote'),
     path('time_settings/', views.time_settings, name='time_settings'),
     path('training/', views.training, name='training'),
+    path('recalc_price_volume/', views.recalc_price_volume, name='recalc_price_volume'),
     path('training_result/', views.training_result, name='training_result'),
     path('real_trade/', views.real_trade, name='real_trade'),
     path('training_history/', views.training_history, name='training_history'),
