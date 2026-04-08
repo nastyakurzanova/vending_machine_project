@@ -1,3 +1,5 @@
+from .services import AlphaVantageService
+from django.core.cache import cache
 from django.http import HttpResponse
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.pagesizes import A4
@@ -23,6 +25,32 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
+
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
+
+@login_required
+def realtime_chart(request, quote_id):
+    quote = get_object_or_404(Quote, id=quote_id)
+    
+    # Пытаемся взять данные из кэша (на 10 минут, чтобы не бить API часто)
+    cache_key = f'realtime_{quote.id}'
+    historical_data = cache.get(cache_key)
+    
+    if not historical_data:
+        historical_data = AlphaVantageService.fetch_historical_prices(quote.name, days=30)
+        cache.set(cache_key, historical_data, 60 * 10)  # 10 минут
+    
+    # Подготовим данные для графика
+    labels = [item['date'] for item in historical_data]
+    prices = [float(item['price']) for item in historical_data]
+    
+    context = {
+        'quote': quote,
+        'labels': labels,
+        'prices': prices,
+    }
+    return render(request, 'quotes/realtime.html', context)
 
 # Регистрируем шрифт (делаем это один раз вне функции, чтобы не регистрировать при каждом запросе)
 font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans.ttf')

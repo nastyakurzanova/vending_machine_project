@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Реальное время: {{ quote.name }}{% endblock %}
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .price-info {
+        background: rgba(45,212,191,0.1);
+        border-radius: 1rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    .current-price {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2dd4bf;
+    }
+    .update-time {
+        font-size: 0.8rem;
+        color: #a0b3d9;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-chart-line"></i>
+        <h2>Исторические цены (реальное время) — {{ quote.name }}</h2>
+    </div>
+    <div class="price-info">
+        <div class="current-price" id="currentPrice">{{ quote.current_price }}</div>
+        <div class="update-time">Текущая цена (последнее обновление)</div>
+    </div>
+    <canvas id="priceChart" width="400" height="200"></canvas>
+    <div class="graph-placeholder">
+        <p><i class="fas fa-chart-simple"></i> Последние {{ labels|length }} дней</p>
+    </div>
+</div>
+
+<script>
+    const labels = {{ labels|safe }};
+    const prices = {{ prices|safe }};
+    
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Цена закрытия',
+                data: prices,
+                borderColor: '#2dd4bf',
+                backgroundColor: 'rgba(45,212,191,0.1)',
+                fill: true,
+                tension: 0.1,
+                pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: { mode: 'index', intersect: false },
+                legend: { position: 'top', labels: { color: '#eef2ff' } }
+            },
+            scales: {
+                x: { ticks: { color: '#a0b3d9' }, grid: { color: '#1e2a44' } },
+                y: { ticks: { color: '#a0b3d9' }, grid: { color: '#1e2a44' } }
+            }
+        }
+    });
+</script>
+{% endblock %}

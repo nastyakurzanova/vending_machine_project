@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 class Quote(models.Model):
     name = models.CharField(max_length=50, unique=True, verbose_name='Название котировки')
     description = models.TextField(blank=True, verbose_name='Описание')
+    # в models.py Quote
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Время последнего обновления')
     current_price = models.DecimalField(
         max_digits=12, decimal_places=4, default=100.00,
         verbose_name='Текущая цена'

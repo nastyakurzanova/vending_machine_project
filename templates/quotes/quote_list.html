@@ -58,12 +58,18 @@
         <i class="fas fa-chart-line"></i>
         <h2>Доступные котировки</h2>
     </div>
+    <div class="quote-desc">
+    Последнее обновление: {{ quote.updated_at|date:"H:i:s" }}
+</div>
     <div class="quotes-grid">
         {% for quote in quotes %}
             <div class="quote-card" onclick="location.href='{% url 'quotes:trade_params' quote.id %}'">
                 <div class="quote-icon"><i class="fas fa-chart-simple"></i></div>
                 <div class="quote-name">{{ quote.name }}</div>
                 <div class="quote-desc">{{ quote.description|default:"Котировка для торговли" }}</div>
+                <a href="{% url 'quotes:realtime_chart' quote.id %}" class="quote-link" style="margin-right: 10px;">
+    <i class="fas fa-chart-line"></i> График
+</a>
                 <a href="{% url 'quotes:trade_params' quote.id %}" class="quote-link">
                     Выбрать <i class="fas fa-arrow-right"></i>
                 </a>

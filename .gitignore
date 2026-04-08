@@ -46,7 +46,7 @@ staticfiles/
 # IDE
 .vscode/
 .idea/
-
+.env
 # Файлы миграций (по желанию – можно включить, но часто их коммитят)
 # */migrations/*.py
 # !*/migrations/__init__.py
