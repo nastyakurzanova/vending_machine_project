@@ -46,6 +46,18 @@
     .card form {
         margin-top: 1rem;
     }
+    .help-text {
+    font-size: 0.75rem;
+    color: #8a9bcf;
+    margin-top: 0.5rem;
+    line-height: 1.4;
+    background: rgba(45,212,191,0.05);
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+}
+.algorithm-description p {
+    margin: 0.3rem 0;
+}
     .param-field {
         margin-bottom: 1.5rem;
     }
@@ -88,11 +100,14 @@
             <div class="radio-group">
                 {{ field }}
             </div>
+            {% if field.help_text %}
+                <div class="help-text">{{ field.help_text|safe }}</div>
+            {% endif %}
         {% else %}
             {{ field }}
         {% endif %}
     </div>
-        {% endfor %}
+{% endfor %}
         <button type="submit">
             <i class="fas fa-save"></i> Сохранить настройки и перейти к тренировке
         </button>

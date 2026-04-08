@@ -17,19 +17,30 @@ class TimeSettingsForm(forms.Form):
     )
     algorithm = forms.ChoiceField(
         choices=[
-            ('random', 'Случайный (базовый)'),
-            ('bert_transformer', 'BERT → Transformer (улучшенный метод)')
+            ('random', 'Случайное блуждание'),
+            ('bert_transformer', 'Анализ тренда через латентное пространство')
         ],
         label='Алгоритм прогнозирования',
         initial='random',
         required=True,
-        widget=forms.RadioSelect
+        widget=forms.RadioSelect,
+        help_text='''<div class="algorithm-description">
+                        <p><strong>Случайное блуждание:</strong> Цена меняется случайным образом в пределах ±5% на каждом шаге. Просто, быстро, без учёта истории.</p>
+                        <p><strong>BERT → Transformer:</strong> Сначала исторические цены кодируются в латентное пространство (BERT-подобный энкодер), затем трансформер предсказывает следующие значения на основе этого латентного представления. Учитывает прошлые тренды.</p>
+                     </div>'''
     )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Разрешаем HTML в help_text
+        self.fields['algorithm'].help_text = mark_safe(self.fields['algorithm'].help_text)
+
+# Не забудьте импортировать mark_safe
+from django.utils.safestring import mark_safe
 
 class TrainingTradeForm(forms.ModelForm):
     class Meta:
         model = TrainingTrade
-        fields = ['trade_type', 'volume', 'price']  # частично, остальное из сессии
+        fields = ['trade_type', 'volume', 'price']
         widgets = {
             'trade_type': forms.RadioSelect,
             'volume': forms.NumberInput(attrs={'step': '0.01'}),

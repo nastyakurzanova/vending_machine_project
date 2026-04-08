@@ -78,7 +78,10 @@ def training(request):
     ).order_by('-date').values_list('price', flat=True)[:10])  # последние 10 цен
     historical_prices = [float(p) for p in historical_prices]
     
+    print(f"Algorithm: {algorithm}, historical_prices: {historical_prices}")
     graph_data = generate_forecast(price, timeframe, algorithm, historical_prices)
+    print(f"Generated graph_data length: {len(graph_data)}")
+    
 
     if request.method == 'POST':
         form = TrainingTradeForm(request.POST)
