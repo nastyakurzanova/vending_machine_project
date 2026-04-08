@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Отчёт по прибыли{% endblock %}
+{% block extra_css %}
+<style>
+    .report-form {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    .param-field {
+        margin-bottom: 1.5rem;
+    }
+    .param-field label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #a0b3d9;
+        margin-bottom: 6px;
+    }
+    .param-field input, .param-field select {
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.7rem 0.9rem;
+        width: 100%;
+        color: white;
+    }
+    button {
+        background: linear-gradient(105deg, #1e2b4f, #0f1a30);
+        border: 1px solid #2dd4bf;
+        padding: 0.7rem 1.4rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        color: white;
+        cursor: pointer;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-file-pdf"></i>
+        <h2>Скачать отчёт по прибыли (PDF)</h2>
+    </div>
+    <form method="post" class="report-form">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="param-field">
+                <label>{{ field.label }}</label>
+                {{ field }}
+            </div>
+        {% endfor %}
+        <button type="submit"><i class="fas fa-download"></i> Сформировать PDF</button>
+    </form>
+</div>
+{% endblock %}

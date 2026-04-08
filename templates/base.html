@@ -8,6 +8,187 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/introjs.min.css">
+
+<script>
+// Функция запуска туториала в зависимости от текущей страницы
+function startTutorial() {
+    const path = window.location.pathname;
+    
+    if (path === '/quotes/' || path === '/quotes') {
+        // Страница списка котировок
+        introJs().setOptions({
+            steps: [
+                {
+                    element: document.querySelector('.card:first-child'),
+                    intro: 'Здесь отображаются доступные котировки. Выберите ту, с которой хотите работать.',
+                    title: 'Шаг 1: Котировки'
+                },
+                {
+                    element: document.querySelector('.card:first-child a:first-of-type') || document.querySelector('.card:first-child'),
+                    intro: 'Нажмите на название котировки, чтобы начать настройку сделки.',
+                    title: 'Выбор котировки'
+                }
+            ],
+            showStepNumbers: true,
+            exitOnOverlayClick: false,
+            showBullets: true,
+            showProgress: true,
+            scrollToElement: true,
+            doneLabel: 'Готово',
+            nextLabel: 'Далее',
+            prevLabel: 'Назад'
+        }).start().oncomplete(function() {
+            // После завершения туториала предложим перейти к следующему шагу
+            if (confirm('Хотите продолжить обучение? Перейдём к настройке параметров сделки.')) {
+                window.location.href = '/quotes/trade_params/';
+            }
+        });
+    } 
+    else if (path.startsWith('/quotes/trade_params')) {
+        // Страница параметров сделки
+        introJs().setOptions({
+            steps: [
+                {
+                    element: document.querySelector('#id_date'),
+                    intro: 'Укажите дату сделки (например, сегодняшнюю).',
+                    title: 'Шаг 2: Параметры сделки'
+                },
+                {
+                    element: document.querySelector('#id_volume'),
+                    intro: 'Введите объём. При вводе объёма цена пересчитается автоматически (и наоборот).',
+                    title: 'Объём'
+                },
+                {
+                    element: document.querySelector('#id_asset'),
+                    intro: 'Название актива (например, "Криптовалюта" или "Акция").',
+                    title: 'Актив'
+                },
+                {
+                    element: document.querySelector('#id_price'),
+                    intro: 'Цена за единицу. Можно ввести вручную, тогда объём пересчитается.',
+                    title: 'Цена'
+                },
+                {
+                    element: document.querySelector('button[type="submit"]'),
+                    intro: 'Нажмите «Применить», чтобы сохранить параметры и перейти к настройке алгоритма.',
+                    title: 'Далее'
+                }
+            ],
+            showStepNumbers: true
+        }).start().oncomplete(function() {
+            if (confirm('Параметры заданы. Перейти к выбору алгоритма?')) {
+                window.location.href = '/quotes/time_settings/';
+            }
+        });
+    }
+    else if (path.startsWith('/quotes/time_settings')) {
+        // Страница настроек времени и алгоритма
+        introJs().setOptions({
+            steps: [
+                {
+                    element: document.querySelector('#id_timeframe'),
+                    intro: 'Выберите период прогноза: день, неделя или месяц.',
+                    title: 'Шаг 3: Таймфрейм'
+                },
+                {
+                    element: document.querySelector('.radio-group') || document.querySelector('#id_algorithm'),
+                    intro: 'Здесь можно выбрать алгоритм прогнозирования. «Случайное блуждание» – простой вариант, а «BERT→Transformer» – умный метод, учитывающий историю сделок.',
+                    title: 'Алгоритм'
+                },
+                {
+                    element: document.querySelector('button[type="submit"]'),
+                    intro: 'Сохраните настройки и перейдите к тренировке.',
+                    title: 'Запуск прогноза'
+                }
+            ]
+        }).start().oncomplete(function() {
+            if (confirm('Настройки сохранены. Перейти к тренировке?')) {
+                window.location.href = '/quotes/training/';
+            }
+        });
+    }
+    else if (path.startsWith('/quotes/training')) {
+        // Страница тренировки
+        introJs().setOptions({
+            steps: [
+                {
+                    element: document.querySelector('#forecastChart') || document.querySelector('.card:first-child'),
+                    intro: 'Это прогнозный график. Вы видите, как может измениться цена в будущем.',
+                    title: 'Шаг 4: Прогноз'
+                },
+                {
+                    element: document.querySelector('.advice-box'),
+                    intro: 'Система даёт рекомендацию: покупать или продавать, основываясь на прогнозе.',
+                    title: 'Совет'
+                },
+                {
+                    element: document.querySelector('.radio-group') || document.querySelector('#id_trade_type'),
+                    intro: 'Выберите тип сделки: покупка или продажа.',
+                    title: 'Тип сделки'
+                },
+                {
+                    element: document.querySelector('button[type="submit"]'),
+                    intro: 'Нажмите «Совершить тренировочную сделку», чтобы зафиксировать результат.',
+                    title: 'Совершить сделку'
+                }
+            ]
+        }).start().oncomplete(function() {
+            if (confirm('Тренировка завершена. Посмотреть результат?')) {
+                // Обычно после отправки формы редирект на результат – оставим пользователю возможность самому нажать
+                alert('Теперь вы можете заполнить форму и нажать кнопку. После этого вы увидите результат сделки.');
+            }
+        });
+    }
+    else if (path.startsWith('/quotes/training_result')) {
+        // Страница результата тренировки
+        introJs().setOptions({
+            steps: [
+                {
+                    element: document.querySelector('.card:first-child'),
+                    intro: 'Здесь показан результат сделки: прибыль или убыток.',
+                    title: 'Шаг 5: Результат'
+                },
+                {
+                    element: document.querySelector('button[value="accept"]') || document.querySelector('form button:first-of-type'),
+                    intro: 'Если вы согласны с условиями, нажмите «Принять» – вы перейдёте к оформлению реальной сделки.',
+                    title: 'Принять'
+                },
+                {
+                    element: document.querySelector('button[value="reject"]') || document.querySelectorAll('form button')[1],
+                    intro: 'Или отклоните – вернётесь к списку котировок.',
+                    title: 'Отклонить'
+                }
+            ]
+        }).start();
+    }
+    else if (path.startsWith('/quotes/real_trade')) {
+        // Страница реальной сделки
+        introJs().setOptions({
+            steps: [
+                {
+                    element: document.querySelector('#id_trade_type') || document.querySelector('.radio-group'),
+                    intro: 'Выберите тип сделки (покупка или продажа).',
+                    title: 'Шаг 6: Реальная сделка'
+                },
+                {
+                    element: document.querySelector('button[type="submit"]'),
+                    intro: 'Нажмите для подтверждения. Сделка будет сохранена в истории.',
+                    title: 'Оформить'
+                }
+            ]
+        }).start().oncomplete(function() {
+            alert('Поздравляем! Вы прошли весь обучающий курс. Теперь вы можете торговать самостоятельно.');
+        });
+    }
+    else {
+        // Если пользователь на другой странице (например, главной)
+        alert('Для обучения перейдите на страницу со списком котировок.\nНажмите "Котировки" в меню.');
+        window.location.href = '/quotes/';
+    }
+}
+</script>
+
     {% block extra_css %}{% endblock %}
     <style>
         /* Корректировка позиционирования частиц */
@@ -39,6 +220,160 @@
             padding-top: 1.5rem;
             margin-top: 2rem;
         }
+
+        /* Стили для красивых сообщений (уведомления в углу) */
+        .messages-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            width: 350px;
+            max-width: calc(100% - 40px);
+        }
+        .alert {
+            padding: 1rem 1rem 1rem 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 1rem;
+            background: #0f172f;
+            border-left: 4px solid;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            color: #eef2ff;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+        .alert i:first-child {
+            font-size: 1.3rem;
+        }
+        .alert-success {
+            border-left-color: #10b981;
+        }
+        .alert-success i:first-child {
+            color: #10b981;
+        }
+        .alert-error {
+            border-left-color: #ef4444;
+        }
+        .alert-error i:first-child {
+            color: #ef4444;
+        }
+        .alert-warning {
+            border-left-color: #f59e0b;
+        }
+        .alert-warning i:first-child {
+            color: #f59e0b;
+        }
+        .alert-info {
+            border-left-color: #2dd4bf;
+        }
+        .alert-info i:first-child {
+            color: #2dd4bf;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: #a0b3d9;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-left: auto;
+            padding: 0 0 0 10px;
+            transition: color 0.2s;
+        }
+        .close-btn:hover {
+            color: #fff;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        /* Автоматическое исчезновение через 5 секунд */
+        .alert {
+            animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 4.5s forwards;
+        }
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+                visibility: hidden;
+            }
+        }
+        /* Переопределение стилей intro.js для тёмной темы */
+.introjs-tooltip {
+    background-color: #0f172f !important;
+    color: #eef2ff !important;
+    border: 1px solid #2dd4bf !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+    z-index: 10000 !important;
+}
+.introjs-tooltip-title {
+    color: #2dd4bf !important;
+    font-weight: 600 !important;
+}
+.introjs-tooltiptext {
+    color: #cbd5e6 !important;
+}
+.introjs-button {
+    background: #1e2b4f !important;
+    color: #e2f0ff !important;
+    border: 1px solid #2dd4bf !important;
+    border-radius: 2rem !important;
+    text-shadow: none !important;
+    transition: all 0.2s !important;
+}
+.introjs-button:hover {
+    background: #0f4c3a !important;
+    color: white !important;
+}
+.introjs-nextbutton, .introjs-prevbutton, .introjs-donebutton {
+    background-color: #1e2b4f !important;
+}
+.introjs-skipbutton {
+    color: #a0b3d9 !important;
+}
+.introjs-skipbutton:hover {
+    color: #ef4444 !important;
+}
+.introjs-bullets ul li a {
+    background: #2d3a5e !important;
+}
+.introjs-bullets ul li a.active {
+    background: #2dd4bf !important;
+}
+.introjs-progress {
+    background-color: #2d3a5e !important;
+}
+.introjs-progressbar {
+    background-color: #2dd4bf !important;
+}
+.introjs-arrow {
+    border-color: transparent !important;
+}
+.introjs-arrow.top {
+    border-bottom-color: #0f172f !important;
+}
+.introjs-arrow.bottom {
+    border-top-color: #0f172f !important;
+}
+.introjs-arrow.left {
+    border-right-color: #0f172f !important;
+}
+.introjs-arrow.right {
+    border-left-color: #0f172f !important;
+}
+.introjs-overlay {
+    z-index: 9999 !important;
+}
+        
     </style>
 </head>
 <body>
@@ -52,11 +387,11 @@
             </div>
             <div class="nav-links">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'quotes:quote_list' %}">Котировки</a>
-                    <a href="{% url 'quotes:time_settings' %}">Настройки</a>
                     <a href="{% url 'quotes:training' %}">Тренировка</a>
                     <a href="{% url 'quotes:real_trade' %}">Оформить сделку</a>
                     <a href="{% url 'quotes:training_history' %}">История</a>
+                    <a href="{% url 'quotes:profit_report' %}">Отчёт</a>
+                    <a href="#" onclick="startTutorial(); return false;">Обучение</a>
                     <a href="{% url 'users:profile' %}">
                 <i class="fas fa-user"></i> {{ user.username }}</a>
                     <div class="auth-buttons">
@@ -70,13 +405,22 @@
                 {% endif %}
             </div>
         </nav>
+
+        <!-- НОВЫЙ БЛОК КРАСИВЫХ СООБЩЕНИЙ -->
         {% if messages %}
-            <div class="messages">
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                {% endfor %}
+        <div class="messages-container">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-triangle{% elif message.tags == 'warning' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                {{ message }}
+                <button type="button" class="close-btn" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
+            {% endfor %}
+        </div>
         {% endif %}
+
         <main>
             {% block content %}
             {% endblock %}
@@ -108,52 +452,67 @@
         });
     </script>
     <script>
-    // Запрос разрешения на уведомления при загрузке страницы
-    document.addEventListener('DOMContentLoaded', function() {
-        if ('Notification' in window) {
-            Notification.requestPermission();
-        }
-    });
-
-    // Функция для показа уведомления
-    function showNotification(title, body, type = 'success') {
-        if (!('Notification' in window)) {
-            console.warn('Браузер не поддерживает уведомления');
-            return;
-        }
-        if (Notification.permission === 'granted') {
-            const options = {
-                body: body,
-                icon: '/static/images/icon.png', // замените на свой путь к иконке
-                badge: '/static/images/badge.png'
-            };
-            new Notification(title, options);
-        } else if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    const options = {
-                        body: body,
-                        icon: '/static/images/icon.png'
-                    };
-                    new Notification(title, options);
-                }
+        // Функционал закрытия сообщений
+        document.addEventListener('DOMContentLoaded', function() {
+            // Находим все кнопки закрытия и добавляем обработчик
+            const closeBtns = document.querySelectorAll('.close-btn');
+            closeBtns.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const alertDiv = this.closest('.alert');
+                    if (alertDiv) {
+                        alertDiv.remove();
+                    }
+                });
             });
-        }
-    }
+        });
 
-    // Проверяем сообщения Django и показываем уведомления
-    (function checkMessagesForNotifications() {
-        const messages = document.querySelectorAll('.alert');
-        messages.forEach(msg => {
-            const text = msg.innerText;
-            if (text.includes('успешно')) {
-                showNotification('Успех!', text, 'success');
-            } else if (text.includes('ошибка') || text.includes('Ошибка')) {
-                showNotification('Ошибка', text, 'error');
+        // Запрос разрешения на уведомления при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            if ('Notification' in window) {
+                Notification.requestPermission();
             }
         });
-    })();
-</script>
+
+        // Функция для показа уведомления
+        function showNotification(title, body, type = 'success') {
+            if (!('Notification' in window)) {
+                console.warn('Браузер не поддерживает уведомления');
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                const options = {
+                    body: body,
+                    icon: '/static/images/icon.png', // замените на свой путь к иконке
+                    badge: '/static/images/badge.png'
+                };
+                new Notification(title, options);
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        const options = {
+                            body: body,
+                            icon: '/static/images/icon.png'
+                        };
+                        new Notification(title, options);
+                    }
+                });
+            }
+        }
+
+        // Проверяем сообщения Django и показываем уведомления
+        (function checkMessagesForNotifications() {
+            const messages = document.querySelectorAll('.alert');
+            messages.forEach(msg => {
+                const text = msg.innerText;
+                if (text.includes('успешно')) {
+                    showNotification('Успех!', text, 'success');
+                } else if (text.includes('ошибка') || text.includes('Ошибка')) {
+                    showNotification('Ошибка', text, 'error');
+                }
+            });
+        })();
+    </script>
     {% block extra_js %}{% endblock %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js"></script>
 </body>
 </html>

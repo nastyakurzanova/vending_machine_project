@@ -1,3 +1,12 @@
+from django.http import HttpResponse
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from datetime import datetime
+from .forms import ReportForm
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -7,6 +16,290 @@ from .forms import QuoteSelectForm, TradeParamsForm, TimeSettingsForm, TrainingT
 from .prediction import get_forecaster
 import random
 from datetime import datetime, timedelta
+
+import os
+from django.conf import settings
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+
+# Регистрируем шрифт (делаем это один раз вне функции, чтобы не регистрировать при каждом запросе)
+font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans.ttf')
+if os.path.exists(font_path):
+    pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
+    DEFAULT_FONT = 'DejaVuSans'
+else:
+    # fallback на стандартный шрифт, но кириллица не будет работать
+    DEFAULT_FONT = 'Helvetica'
+
+@login_required
+def profit_report(request):
+    if request.method == 'POST':
+        form = ReportForm(request.POST)
+        if form.is_valid():
+            trade_type = form.cleaned_data['trade_type']
+            date_from = form.cleaned_data['date_from']
+            date_to = form.cleaned_data['date_to']
+            
+            # Собираем данные (как раньше)
+            trades_data = []
+            total_profit = 0
+            
+            if trade_type in ('training', 'both'):
+                trades = TrainingTrade.objects.filter(
+                    user=request.user,
+                    date__gte=date_from,
+                    date__lte=date_to
+                ).order_by('date')
+                for t in trades:
+                    profit = t.profit_loss if t.profit_loss is not None else 0
+                    trades_data.append({
+                        'type': 'Тренировочная',
+                        'date': t.date,
+                        'quote': t.quote.name,
+                        'trade_type': t.get_trade_type_display(),
+                        'volume': t.volume,
+                        'price': t.price,
+                        'profit_loss': profit,
+                    })
+                    total_profit += profit
+            
+            if trade_type in ('real', 'both'):
+                trades = RealTrade.objects.filter(
+                    user=request.user,
+                    date__gte=date_from,
+                    date__lte=date_to,
+                    is_confirmed=True
+                ).order_by('date')
+                for t in trades:
+                    profit = 0
+                    trades_data.append({
+                        'type': 'Реальная',
+                        'date': t.date,
+                        'quote': t.quote.name,
+                        'trade_type': t.get_trade_type_display(),
+                        'volume': t.volume,
+                        'price': t.price,
+                        'profit_loss': profit,
+                    })
+                    total_profit += profit
+            
+            # Создаём PDF-ответ
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="profit_report_{date_from}_{date_to}.pdf"'
+            
+            doc = SimpleDocTemplate(response, pagesize=A4)
+            styles = getSampleStyleSheet()
+            
+            # Переопределяем стандартные стили на наш шрифт
+            for style_name in styles.byName:
+                styles[style_name].fontName = DEFAULT_FONT
+            
+            # Создаём собственные стили с поддержкой кириллицы
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Title'],
+                fontName=DEFAULT_FONT,
+                fontSize=16,
+                textColor=colors.HexColor('#2dd4bf'),
+                alignment=TA_CENTER
+            )
+            heading_style = ParagraphStyle(
+                'CustomHeading',
+                parent=styles['Heading1'],
+                fontName=DEFAULT_FONT,
+                fontSize=12,
+                textColor=colors.HexColor('#2dd4bf')
+            )
+            normal_style = ParagraphStyle(
+                'CustomNormal',
+                parent=styles['Normal'],
+                fontName=DEFAULT_FONT,
+                fontSize=9
+            )
+            total_style = ParagraphStyle(
+                'TotalStyle',
+                parent=styles['Heading2'],
+                fontName=DEFAULT_FONT,
+                fontSize=14,
+                textColor=colors.HexColor('#2dd4bf')
+            )
+            
+            story = []
+            
+            # Заголовок
+            story.append(Paragraph(f"Отчёт по прибыли за период с {date_from} по {date_to}", title_style))
+            story.append(Spacer(1, 0.2*inch))
+            story.append(Paragraph(f"Пользователь: {request.user.username}", normal_style))
+            story.append(Paragraph(f"Тип сделок: {dict(ReportForm.TRADE_TYPE_CHOICES).get(trade_type)}", normal_style))
+            story.append(Spacer(1, 0.3*inch))
+            
+            if trades_data:
+                table_data = [['Тип', 'Дата', 'Котировка', 'Сделка', 'Объём', 'Цена', 'Прибыль']]
+                for row in trades_data:
+                    table_data.append([
+                        row['type'],
+                        row['date'].strftime('%Y-%m-%d'),
+                        row['quote'],
+                        row['trade_type'],
+                        str(row['volume']),
+                        str(row['price']),
+                        f"{row['profit_loss']:.2f}"
+                    ])
+                table_data.append(['', '', '', '', '', 'Итого:', f"{total_profit:.2f}"])
+                
+                table = Table(table_data, colWidths=[60, 65, 65, 60, 55, 60, 65])
+                # Стиль таблицы с использованием нашего шрифта
+                tbl_style = TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2dd4bf')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), DEFAULT_FONT),
+                    ('FONTSIZE', (0, 0), (-1, 0), 9),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                    ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#0f172f')),
+                    ('TEXTCOLOR', (0, 1), (-1, -2), colors.HexColor('#eef2ff')),
+                    ('FONTNAME', (0, 1), (-1, -2), DEFAULT_FONT),
+                    ('FONTSIZE', (0, 1), (-1, -2), 8),
+                    ('GRID', (0, 0), (-1, -2), 0.5, colors.HexColor('#2d3a5e')),
+                    ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#1e2b4f')),
+                    ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2dd4bf')),
+                    ('FONTNAME', (0, -1), (-1, -1), DEFAULT_FONT),
+                    ('FONTSIZE', (0, -1), (-1, -1), 9),
+                ])
+                table.setStyle(tbl_style)
+                story.append(table)
+                story.append(Spacer(1, 0.3*inch))
+                story.append(Paragraph(f"Общая прибыль: {total_profit:.2f}", total_style))
+            else:
+                story.append(Paragraph("Нет сделок за выбранный период.", normal_style))
+            
+            doc.build(story)
+            return response
+    else:
+        form = ReportForm(initial={'date_from': datetime.today().date(), 'date_to': datetime.today().date()})
+    
+    return render(request, 'quotes/report_form.html', {'form': form})
+    if request.method == 'POST':
+        form = ReportForm(request.POST)
+        if form.is_valid():
+            trade_type = form.cleaned_data['trade_type']
+            date_from = form.cleaned_data['date_from']
+            date_to = form.cleaned_data['date_to']
+            
+            # Собираем данные
+            trades_data = []
+            total_profit = 0
+            
+            if trade_type in ('training', 'both'):
+                trades = TrainingTrade.objects.filter(
+                    user=request.user,
+                    date__gte=date_from,
+                    date__lte=date_to
+                ).order_by('date')
+                for t in trades:
+                    profit = t.profit_loss if t.profit_loss is not None else 0
+                    trades_data.append({
+                        'type': 'Тренировочная',
+                        'date': t.date,
+                        'quote': t.quote.name,
+                        'trade_type': t.get_trade_type_display(),
+                        'volume': t.volume,
+                        'price': t.price,
+                        'profit_loss': profit,
+                    })
+                    total_profit += profit
+            
+            if trade_type in ('real', 'both'):
+                trades = RealTrade.objects.filter(
+                    user=request.user,
+                    date__gte=date_from,
+                    date__lte=date_to,
+                    is_confirmed=True
+                ).order_by('date')
+                for t in trades:
+                    # Для реальных сделок profit_loss нет, считаем? Пока ставим 0
+                    profit = 0
+                    trades_data.append({
+                        'type': 'Реальная',
+                        'date': t.date,
+                        'quote': t.quote.name,
+                        'trade_type': t.get_trade_type_display(),
+                        'volume': t.volume,
+                        'price': t.price,
+                        'profit_loss': profit,
+                    })
+                    total_profit += profit
+            
+            # Создаём PDF-ответ
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="profit_report_{date_from}_{date_to}.pdf"'
+            
+            doc = SimpleDocTemplate(response, pagesize=A4)
+            styles = getSampleStyleSheet()
+            title_style = styles['Title']
+            heading_style = ParagraphStyle(
+                'Heading1',
+                parent=styles['Heading1'],
+                fontSize=14,
+                textColor=colors.HexColor('#2dd4bf')
+            )
+            normal_style = styles['Normal']
+            
+            # Содержимое PDF
+            story = []
+            
+            # Заголовок
+            story.append(Paragraph(f"Отчёт по прибыли за период с {date_from} по {date_to}", title_style))
+            story.append(Spacer(1, 0.2*inch))
+            story.append(Paragraph(f"Пользователь: {request.user.username}", normal_style))
+            story.append(Paragraph(f"Тип сделок: {dict(ReportForm.TRADE_TYPE_CHOICES).get(trade_type)}", normal_style))
+            story.append(Spacer(1, 0.3*inch))
+            
+            # Таблица с данными
+            if trades_data:
+                table_data = [['Тип', 'Дата', 'Котировка', 'Сделка', 'Объём', 'Цена', 'Прибыль']]
+                for row in trades_data:
+                    table_data.append([
+                        row['type'],
+                        row['date'].strftime('%Y-%m-%d'),
+                        row['quote'],
+                        row['trade_type'],
+                        str(row['volume']),
+                        str(row['price']),
+                        f"{row['profit_loss']:.2f}"
+                    ])
+                # Добавляем строку итога
+                table_data.append(['', '', '', '', '', 'Итого:', f"{total_profit:.2f}"])
+                
+                table = Table(table_data, colWidths=[70, 70, 70, 70, 60, 60, 70])
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2dd4bf')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#0f172f')),
+                    ('TEXTCOLOR', (0, 1), (-1, -2), colors.HexColor('#eef2ff')),
+                    ('GRID', (0, 0), (-1, -2), 1, colors.HexColor('#2d3a5e')),
+                    ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#1e2b4f')),
+                    ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2dd4bf')),
+                    ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ]))
+                story.append(table)
+                story.append(Spacer(1, 0.3*inch))
+                story.append(Paragraph(f"Общая прибыль: {total_profit:.2f}", ParagraphStyle('Total', parent=styles['Heading2'], textColor=colors.HexColor('#2dd4bf'))))
+            else:
+                story.append(Paragraph("Нет сделок за выбранный период.", normal_style))
+            
+            doc.build(story)
+            return response
+    else:
+        form = ReportForm(initial={'date_from': datetime.today().date(), 'date_to': datetime.today().date()})
+    
+    return render(request, 'quotes/report_form.html', {'form': form})
 
 @login_required
 def quote_list(request):

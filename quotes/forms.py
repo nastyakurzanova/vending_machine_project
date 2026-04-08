@@ -1,6 +1,16 @@
 from django import forms
 from .models import Quote, TrainingTrade, RealTrade
 
+class ReportForm(forms.Form):
+    TRADE_TYPE_CHOICES = [
+        ('training', 'Тренировочные сделки'),
+        ('real', 'Реальные сделки'),
+        ('both', 'Оба типа'),
+    ]
+    trade_type = forms.ChoiceField(choices=TRADE_TYPE_CHOICES, label='Тип сделок', initial='both')
+    date_from = forms.DateField(label='Дата от', widget=forms.DateInput(attrs={'type': 'date'}))
+    date_to = forms.DateField(label='Дата до', widget=forms.DateInput(attrs={'type': 'date'}))
+
 class QuoteSelectForm(forms.Form):
     quote = forms.ModelChoiceField(queryset=Quote.objects.all(), label='Котировка', empty_label=None)
 
