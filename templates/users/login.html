@@ -71,14 +71,26 @@
     <form method="post">
         {% csrf_token %}
         {% for field in form %}
-            <div class="param-field">
-                <label>{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}
-                    <div class="error">{{ field.errors }}</div>
-                {% endif %}
-            </div>
+    <div class="param-field">
+        <label>
+            {% if field.name == 'username' %}
+                Имя пользователя
+            {% elif field.name == 'password' %}
+                Пароль
+            {% else %}
+                {{ field.label }}
+            {% endif %}
+        </label>
+        {{ field }}
+        {% if field.errors %}
+    <div class="error">
+        {% for error in field.errors %}
+            {{ error }}
         {% endfor %}
+    </div>
+{% endif %}
+    </div>
+{% endfor %}
         <button type="submit">
             <i class="fas fa-sign-in-alt"></i> Войти
         </button>

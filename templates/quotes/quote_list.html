@@ -4,7 +4,7 @@
 <style>
     .quotes-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 1.5rem;
         margin-top: 1rem;
     }
@@ -31,18 +31,54 @@
         font-size: 1.3rem;
         font-weight: 600;
         margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .quote-price {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin: 0.5rem 0;
+    }
+    .quote-change {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.9rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 1rem;
+        background: rgba(0,0,0,0.3);
+    }
+    .quote-change.positive {
+        color: #10b981;
+    }
+    .quote-change.negative {
+        color: #ef4444;
+    }
+    .quote-change.neutral {
+        color: #a0b3d9;
     }
     .quote-desc {
         font-size: 0.85rem;
         color: #a0b3d9;
         line-height: 1.4;
+        margin: 0.5rem 0;
+    }
+    .quote-updated {
+        font-size: 0.7rem;
+        color: #5f7f9e;
+        margin-top: 0.5rem;
+    }
+    .quote-links {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
     }
     .quote-link {
-        display: inline-block;
-        margin-top: 1rem;
         color: #2dd4bf;
         text-decoration: none;
         font-weight: 500;
+        font-size: 0.85rem;
     }
     .quote-link i {
         transition: transform 0.2s;
@@ -53,30 +89,47 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="card">   <!-- ← ДОБАВЛЕНА ОБЁРТКА -->
+<div class="card">
     <div class="card-header">
         <i class="fas fa-chart-line"></i>
         <h2>Доступные котировки</h2>
     </div>
-    <div class="quote-desc">
-    Последнее обновление: {{ quote.updated_at|date:"H:i:s" }}
-</div>
     <div class="quotes-grid">
         {% for quote in quotes %}
+            {% with change=quote.get_change_percent change_info=quote.get_change_icon %}
             <div class="quote-card" onclick="location.href='{% url 'quotes:trade_params' quote.id %}'">
-                <div class="quote-icon"><i class="fas fa-chart-simple"></i></div>
-                <div class="quote-name">{{ quote.name }}</div>
-                <div class="quote-desc">{{ quote.description|default:"Котировка для торговли" }}</div>
-                <a href="{% url 'quotes:realtime_chart' quote.id %}" class="quote-link" style="margin-right: 10px;">
-    <i class="fas fa-chart-line"></i> График
-</a>
-                <a href="{% url 'quotes:trade_params' quote.id %}" class="quote-link">
-                    Выбрать <i class="fas fa-arrow-right"></i>
-                </a>
+                <div class="quote-icon">
+                    <i class="fas fa-chart-simple"></i>
+                </div>
+                <div class="quote-name">
+                    {{ quote.name }}
+                    <span class="quote-change {{ change_info.class }}">
+                        <i class="fas {{ change_info.icon }}"></i>
+                        {% if change > 0 %}+{% endif %}{{ change }}%
+                    </span>
+                </div>
+                <div class="quote-price">
+                    ${{ quote.current_price }}
+                </div>
+                <div class="quote-desc">
+                    {{ quote.description|default:"Котировка для торговли" }}
+                </div>
+                <div class="quote-updated">
+                    <i class="fas fa-clock"></i> Обновлено: {{ quote.updated_at|date:"d.m.Y H:i" }}
+                </div>
+                <div class="quote-links">
+                    <a href="{% url 'quotes:trade_params' quote.id %}" class="quote-link" onclick="event.stopPropagation()">
+                        Торговать <i class="fas fa-arrow-right"></i>
+                    </a>
+                    <a href="{% url 'quotes:realtime_chart' quote.id %}" class="quote-link" onclick="event.stopPropagation()">
+                        <i class="fas fa-chart-line"></i> График
+                    </a>
+                </div>
             </div>
+            {% endwith %}
         {% empty %}
             <p>Котировки пока не добавлены.</p>
         {% endfor %}
     </div>
-</div>   <!-- ← ЗАКРЫТИЕ ОБЁРТКИ -->
+</div>
 {% endblock %}

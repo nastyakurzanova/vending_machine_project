@@ -21,28 +21,20 @@ class RandomForecaster(BaseForecaster):
 
 class BertTransformerForecaster(BaseForecaster):
     def __init__(self):
-        self.latent_dim = 8   # уменьшим размерность для надёжности
+        self.latent_dim = 8
         self.memory = []
 
     def _bert_encode(self, historical_prices):
-        """
-        Преобразует историю цен в латентный вектор (список float).
-        Всегда возвращает вектор длины self.latent_dim.
-        """
-        # Если история пустая или слишком короткая – возвращаем случайный вектор
         if not historical_prices or len(historical_prices) < 2:
             return [random.uniform(-1, 1) for _ in range(self.latent_dim)]
         
-        # Берём последние до 5 значений
         recent = historical_prices[-5:]
-        # Нормализуем (без numpy)
         mean = sum(recent) / len(recent)
         std = math.sqrt(sum((x - mean) ** 2 for x in recent) / len(recent)) if len(recent) > 1 else 1.0
         if std == 0:
             std = 1.0
         norm = [(x - mean) / std for x in recent]
         
-        # Интерполяция до latent_dim (линейная)
         if len(norm) == 1:
             return [norm[0]] * self.latent_dim
         
@@ -61,9 +53,6 @@ class BertTransformerForecaster(BaseForecaster):
         return latent
 
     def _transformer_predict(self, latent_vector, steps, trend_strength=0.005):
-        """
-        Генерирует последовательность относительных изменений.
-        """
         predictions = []
         current = 0.0
         base_trend = sum(latent_vector) / len(latent_vector) * trend_strength
@@ -74,11 +63,8 @@ class BertTransformerForecaster(BaseForecaster):
 
     def predict(self, current_price, steps, step_days, historical_data=None):
         try:
-            # Шаг 1: латентный вектор
             latent = self._bert_encode(historical_data)
-            # Шаг 2: предсказание относительных изменений
             rel_changes = self._transformer_predict(latent, steps)
-            # Шаг 3: превращаем в цены
             points = []
             price_val = current_price
             for change in rel_changes:
@@ -87,12 +73,30 @@ class BertTransformerForecaster(BaseForecaster):
             return points
         except Exception as e:
             logger.error(f"Ошибка в BertTransformerForecaster: {e}")
-            # fallback – случайный прогноз
             fallback = RandomForecaster()
             return fallback.predict(current_price, steps, step_days)
 
+
 def get_forecaster(algorithm):
-    if algorithm == 'bert_transformer':
+    """
+    Фабрика для создания объектов прогнозирования.
+    Поддерживает: arima, arimax, bert_transformer, random
+    """
+    if algorithm == 'arima':
+        try:
+            from .arima_forecaster import ARIMAForecaster
+            return ARIMAForecaster()
+        except ImportError as e:
+            logger.warning(f"ARIMA не доступен: {e}. Используем RandomForecaster.")
+            return RandomForecaster()
+    elif algorithm == 'arimax':
+        try:
+            from .arima_forecaster import ARIMAXForecaster
+            return ARIMAXForecaster()
+        except ImportError as e:
+            logger.warning(f"ARIMAX не доступен: {e}. Используем RandomForecaster.")
+            return RandomForecaster()
+    elif algorithm == 'bert_transformer':
         return BertTransformerForecaster()
     else:
         return RandomForecaster()

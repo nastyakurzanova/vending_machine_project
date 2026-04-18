@@ -11,6 +11,7 @@ urlpatterns = [
     path('training/', views.training, name='training'),
     path('realtime/<int:quote_id>/', views.realtime_chart, name='realtime_chart'),
     path('profit_report/', views.profit_report, name='profit_report'),
+    path('update_forecast/', views.update_forecast_ajax, name='update_forecast_ajax'),
     path('recalc_price_volume/', views.recalc_price_volume, name='recalc_price_volume'),
     path('training_result/', views.training_result, name='training_result'),
     path('real_trade/', views.real_trade, name='real_trade'),

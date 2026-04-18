@@ -30,6 +30,8 @@ SECRET_KEY = 'django-insecure-utz=#u$ttk0b+@)zqqa7nlfl*8#4it@wok!x9n+$$$1z-oxmuf
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+LANGUAGE_CODE = 'ru-RU'
+
 ALLOWED_HOSTS = []
 
 
@@ -104,15 +106,26 @@ DATABASES = {
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'OPTIONS': {
+            'user_attributes': ('username', 'email', 'first_name', 'last_name'),
+            'max_similarity': 0.7,
+        },
+        'MESSAGE': 'Пароль слишком похож на имя пользователя.'
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        },
+        'MESSAGE': 'Пароль слишком короткий. Минимальная длина — 8 символов.'
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'MESSAGE': 'Пароль слишком простой и часто используется. Выберите другой.'
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'MESSAGE': 'Пароль не может состоять только из цифр.'
     },
 ]
 

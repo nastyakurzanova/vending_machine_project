@@ -22,35 +22,70 @@
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
-    .form-fields {
-        display: flex;
-        flex-direction: column;
-        gap: 1.2rem;
-        margin-bottom: 1.5rem;
+    .param-field {
+        margin-bottom: 0;
     }
-    .form-fields p {
-        margin: 0;
-    }
-    .form-fields label {
+    .param-field label {
         display: block;
         font-size: 0.75rem;
         text-transform: uppercase;
         color: #a0b3d9;
         margin-bottom: 0.2rem;
     }
-    .form-fields input, .form-fields select {
+    .param-field .mock-input {
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.6rem 0.9rem;
+        color: white;
+    }
+    .form-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+        margin-bottom: 1.5rem;
+    }
+    .field-wrapper {
+        margin-bottom: 0.5rem;
+    }
+    .field-wrapper label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #a0b3d9;
+        margin-bottom: 0.2rem;
+    }
+    .radio-group {
+        display: flex;
+        gap: 1.5rem;
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.6rem 0.9rem;
+    }
+    .radio-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        color: #eef2ff;
+    }
+    .radio-option input {
+        width: auto;
+        margin: 0;
+        accent-color: #2dd4bf;
+    }
+    .field-wrapper input, .field-wrapper select {
         background: #0f172f;
         border: 1px solid #2d3a5e;
         border-radius: 1rem;
         padding: 0.6rem 0.9rem;
         width: 100%;
         color: white;
-        font-size: 0.9rem;
     }
-    .form-fields input:focus, .form-fields select:focus {
+    .field-wrapper input:focus, .field-wrapper select:focus {
         border-color: #2dd4bf;
         outline: none;
-        box-shadow: 0 0 8px rgba(45,212,191,0.3);
     }
     .btn-submit {
         background: linear-gradient(105deg, #1e2b4f, #0f1a30);
@@ -71,6 +106,10 @@
         transform: scale(1.02);
         box-shadow: 0 0 12px rgba(45,212,191,0.5);
     }
+    /* Скрываем лишнее поле актива */
+    .hidden-field {
+        display: none;
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -90,11 +129,42 @@
         <div class="param-field"><label>Актив</label><div class="mock-input">{{ asset }}</div></div>
         <div class="param-field"><label>Цена</label><div class="mock-input">{{ price }}</div></div>
     </div>
+    
     <form method="post" id="realTradeForm">
         {% csrf_token %}
         <div class="form-fields">
-            {{ form.as_p }}
+            <!-- Поле Тип сделки с радиокнопками -->
+            <div class="field-wrapper">
+                <label>{{ form.trade_type.label }}</label>
+                <div class="radio-group">
+                    {% for radio in form.trade_type %}
+                        <label class="radio-option">
+                            {{ radio.tag }} {{ radio.choice_label }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Поле Объём -->
+            <div class="field-wrapper">
+                <label>{{ form.volume.label }}</label>
+                {{ form.volume }}
+            </div>
+            
+            <!-- Поле Цена -->
+            <div class="field-wrapper">
+                <label>{{ form.price.label }}</label>
+                {{ form.price }}
+            </div>
+            
+            <!-- Скрываем поле Актив (asset), так как оно отображается выше в параметрах -->
+            {% if form.asset %}
+                <div style="display: none;">
+                    {{ form.asset }}
+                </div>
+            {% endif %}
         </div>
+        
         <button type="submit" class="btn-submit">
             <i class="fas fa-check-circle"></i> Подтвердить и оформить сделку
         </button>

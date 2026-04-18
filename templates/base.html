@@ -387,6 +387,7 @@ function startTutorial() {
             </div>
             <div class="nav-links">
                 {% if user.is_authenticated %}
+                    <a href="{% url 'quotes:quote_list' %}">Котировки</a> 
                     <a href="{% url 'quotes:training' %}">Тренировка</a>
                     <a href="{% url 'quotes:real_trade' %}">Оформить сделку</a>
                     <a href="{% url 'quotes:training_history' %}">История</a>
@@ -405,8 +406,7 @@ function startTutorial() {
                 {% endif %}
             </div>
         </nav>
-
-        <!-- НОВЫЙ БЛОК КРАСИВЫХ СООБЩЕНИЙ -->
+        
         {% if messages %}
         <div class="messages-container">
             {% for message in messages %}

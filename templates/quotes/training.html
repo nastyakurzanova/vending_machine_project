@@ -55,11 +55,6 @@
         width: 100%;
         color: white;
     }
-    .field-wrapper input:focus, .field-wrapper select:focus {
-        border-color: #2dd4bf;
-        outline: none;
-    }
-    /* Стили для радиокнопок */
     .radio-group {
         display: flex;
         gap: 1.5rem;
@@ -100,6 +95,73 @@
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 1rem;
     }
+    .legend-info {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 1rem;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+    .legend-historical {
+        color: #3b82f6;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .legend-forecast {
+        color: #2dd4bf;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .legend-historical::before {
+        content: "●";
+        font-size: 1rem;
+    }
+    .legend-forecast::before {
+        content: "●";
+        font-size: 1rem;
+    }
+    .forecast-badge {
+        background: rgba(45,212,191,0.2);
+        border: 1px solid #2dd4bf;
+        border-radius: 1rem;
+        padding: 0.5rem 1rem;
+        margin-top: 1rem;
+        text-align: center;
+        font-size: 0.9rem;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+    }
+    .param-field .mock-input {
+        background: #0f172f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.6rem 0.9rem;
+        color: white;
+    }
+    .mock-button {
+        background: #1e2b4f;
+        border: 1px solid #2d3a5e;
+        border-radius: 1rem;
+        padding: 0.5rem 1rem;
+        color: white;
+        cursor: pointer;
+    }
+    .data-info {
+        background: rgba(0,0,0,0.3);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: #a0b3d9;
+        text-align: center;
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -109,18 +171,22 @@
         <h2>График прогноза для {{ quote.name }}</h2>
     </div>
     <canvas id="forecastChart" width="400" height="200"></canvas>
+    <div class="legend-info">
+        <div class="legend-historical">Исторические данные</div>
+        <div class="legend-forecast">Прогнозируемые данные</div>
+    </div>
+    <div class="forecast-badge" id="forecastBadge">
+        <i class="fas fa-chart-line"></i> Прогноз загружается...
+    </div>
+    <div class="data-info" id="dataInfo"></div>
     <div class="graph-placeholder">
         <p><i class="fas fa-chart-simple"></i> Прогноз на основе выбранных параметров (временной период: {{ timeframe }})</p>
     </div>
 </div>
 
-<div class="advice-box">
-    <i class="fas {% if graph_data|last > graph_data|first %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
-    {% if graph_data|last > graph_data|first %}
-        <span>Прогноз положительный. Рекомендуется покупка.</span>
-    {% else %}
-        <span>Прогноз отрицательный. Рекомендуется продажа.</span>
-    {% endif %}
+<div class="advice-box" id="adviceBox" style="display: none;">
+    <i class="fas"></i>
+    <span id="adviceText"></span>
 </div>
 
 <div class="card">
@@ -173,75 +239,308 @@
 </div>
 
 <script>
+    // Функция для безопасного парсинга JSON
+    function safeParseJSON(data) {
+        if (!data || data === '[]' || data === 'null' || data === 'undefined') {
+            console.log('Empty or null data received');
+            return [];
+        }
+        try {
+            // Если данные уже объект
+            if (typeof data === 'object') {
+                return data;
+            }
+            // Если строка
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch(e) {
+            console.error('JSON parse error:', e, 'Data:', data);
+            return [];
+        }
+    }
+    
     // Получаем данные из контекста
-    const graphData = {{ graph_data|safe }};
-    const initialPrice = {{ price }};
-    const initialLabels = graphData.map(point => point.date);
-    const initialPrices = graphData.map(point => point.price);
-
-    // Создаём график
+    let historicalChartData = [];
+    let forecastChartData = [];
+    
+    try {
+        historicalChartData = safeParseJSON('{{ historical_data|escapejs }}');
+        forecastChartData = safeParseJSON('{{ graph_data|escapejs }}');
+    } catch(e) {
+        console.error('Error parsing data:', e);
+    }
+    
+    console.log('Historical data points:', historicalChartData.length, historicalChartData);
+    console.log('Forecast data points:', forecastChartData.length, forecastChartData);
+    
+    // Отображаем информацию о данных
+    const dataInfo = document.getElementById('dataInfo');
+    dataInfo.innerHTML = `Исторических точек: ${historicalChartData.length} | Прогнозируемых точек: ${forecastChartData.length}`;
+    
+    // Подготавливаем данные для исторического графика
+    let historicalLabels = [];
+    let historicalPricesData = [];
+    
+    // Добавляем только исторические данные
+    if (historicalChartData && historicalChartData.length > 0) {
+        historicalChartData.forEach((point, index) => {
+            if (point && point.date && point.price !== undefined && point.price !== null) {
+                historicalLabels.push(point.date);
+                historicalPricesData.push(parseFloat(point.price));
+                console.log(`Historical point ${index}: ${point.date} = ${point.price}`);
+            }
+        });
+    }
+    
+    // Если нет исторических данных, показываем сообщение
+    if (historicalLabels.length === 0) {
+        console.warn('No historical data points found');
+        historicalLabels = ['Нет данных'];
+        historicalPricesData = [0];
+        dataInfo.innerHTML += ' | Нет исторических данных';
+    } else {
+        dataInfo.innerHTML += ` | Загружено ${historicalLabels.length} исторических точек`;
+    }
+    
+    // Создаём график ТОЛЬКО с историческими данными
     const ctx = document.getElementById('forecastChart').getContext('2d');
     window.myChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: initialLabels,
-            datasets: [{
-                label: 'Прогнозная цена',
-                data: initialPrices,
-                borderColor: '#2dd4bf',
-                tension: 0.1,
-                fill: false,
-                pointBackgroundColor: '#2dd4bf',
-                pointBorderColor: '#fff',
-                pointRadius: 3
-            }]
+            labels: historicalLabels,
+            datasets: [
+                {
+                    label: 'Исторические данные',
+                    data: historicalPricesData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1,
+                    fill: false,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#fff',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 2
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
             plugins: {
-                tooltip: { mode: 'index', intersect: false },
-                legend: { position: 'top', labels: { color: '#eef2ff' } }
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (context.parsed.y !== null && context.parsed.y !== 0) {
+                                label += ': ' + context.parsed.y.toFixed(4);
+                            }
+                            return label;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#eef2ff',
+                        usePointStyle: true,
+                        boxWidth: 10
+                    }
+                }
             },
             scales: {
-                x: { ticks: { color: '#a0b3d9' }, grid: { color: '#1e2a44' } },
-                y: { ticks: { color: '#a0b3d9' }, grid: { color: '#1e2a44' } }
+                x: {
+                    ticks: { 
+                        color: '#a0b3d9',
+                        maxRotation: 45,
+                        minRotation: 45
+                    },
+                    grid: { color: '#1e2a44' }
+                },
+                y: {
+                    ticks: { color: '#a0b3d9' },
+                    grid: { color: '#1e2a44' },
+                    title: {
+                        display: true,
+                        text: 'Цена',
+                        color: '#a0b3d9'
+                    }
+                }
             }
         }
     });
+    
+    console.log('Chart created with', historicalLabels.length, 'labels');
+    
+    // Функция для добавления прогнозируемых данных с задержкой
+    function addForecastData() {
+        console.log('Adding forecast data...');
+        
+        if (!forecastChartData || forecastChartData.length === 0) {
+            console.warn('No forecast data available');
+            document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Нет данных для прогноза';
+            document.getElementById('forecastBadge').style.background = 'rgba(255, 100, 100, 0.2)';
+            document.getElementById('forecastBadge').style.borderColor = '#ff6464';
+            return;
+        }
+        
+        // Получаем текущие данные графика
+        const currentLabels = [...window.myChart.data.labels];
+        const currentHistoricalData = [...window.myChart.data.datasets[0].data];
+        
+        // Создаем массив для прогнозируемых данных
+        let newLabels = [...currentLabels];
+        let forecastValues = [];
+        
+        // Заполняем null для всех исторических точек
+        for (let i = 0; i < currentLabels.length; i++) {
+            forecastValues.push(null);
+        }
+        
+        // Получаем последнюю историческую цену
+        const lastHistoricalPrice = currentHistoricalData[currentHistoricalData.length - 1];
+        console.log('Last historical price:', lastHistoricalPrice);
+        
+        // Добавляем точки прогноза
+        forecastChartData.forEach((point, index) => {
+            if (point && point.date && point.price !== undefined && point.price !== null) {
+                console.log(`Adding forecast point ${index}: ${point.date} = ${point.price}`);
+                
+                if (index === 0 && lastHistoricalPrice !== undefined && lastHistoricalPrice !== 0 && currentLabels[0] !== 'Нет данных') {
+                    // Обновляем последнюю точку прогноза ценой из истории для соединения
+                    forecastValues[forecastValues.length - 1] = parseFloat(lastHistoricalPrice);
+                    // Добавляем новую точку
+                    newLabels.push(point.date);
+                    forecastValues.push(parseFloat(point.price));
+                } else {
+                    newLabels.push(point.date);
+                    forecastValues.push(parseFloat(point.price));
+                }
+            }
+        });
+        
+        // Добавляем новый датасет с прогнозом
+        window.myChart.data.datasets.push({
+            label: 'Прогнозируемые данные',
+            data: forecastValues,
+            borderColor: '#2dd4bf',
+            backgroundColor: 'rgba(45, 212, 191, 0.1)',
+            tension: 0.1,
+            fill: false,
+            pointBackgroundColor: '#2dd4bf',
+            pointBorderColor: '#fff',
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            borderWidth: 2,
+            borderDash: [5, 5]
+        });
+        
+        // Обновляем лейблы
+        window.myChart.data.labels = newLabels;
+        
+        // Обновляем график
+        window.myChart.update();
+        
+        console.log('Forecast data added, total labels:', newLabels.length);
+        
+        // Обновляем совет
+        if (forecastChartData.length > 0) {
+            const validPrices = forecastChartData.filter(p => p && p.price !== undefined);
+            if (validPrices.length > 0) {
+                const firstForecastPrice = parseFloat(validPrices[0].price);
+                const lastForecastPrice = parseFloat(validPrices[validPrices.length - 1].price);
+                const adviceBox = document.getElementById('adviceBox');
+                const adviceIcon = adviceBox.querySelector('i');
+                const adviceText = document.getElementById('adviceText');
+                
+                if (lastForecastPrice > firstForecastPrice) {
+                    adviceIcon.className = 'fas fa-arrow-up';
+                    adviceText.textContent = 'Прогноз положительный. Рекомендуется покупка.';
+                } else {
+                    adviceIcon.className = 'fas fa-arrow-down';
+                    adviceText.textContent = 'Прогноз отрицательный. Рекомендуется продажа.';
+                }
+                adviceBox.style.display = 'flex';
+            }
+        }
+        
+        // Обновляем статус
+        document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Прогноз загружен!';
+        document.getElementById('forecastBadge').style.background = 'rgba(45,212,191,0.2)';
+        
+        setTimeout(() => {
+            const badge = document.getElementById('forecastBadge');
+            if (badge) {
+                badge.style.animation = 'none';
+                badge.style.opacity = '0.7';
+            }
+        }, 3000);
+    }
+    
+    // Добавляем прогноз через 1.5 секунды
+    if (forecastChartData && forecastChartData.length > 0) {
+        console.log('Scheduling forecast addition in 1.5 seconds');
+        setTimeout(() => {
+            addForecastData();
+        }, 1500);
+    } else {
+        console.log('No forecast data to add');
+        document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Нет данных для прогноза';
+        document.getElementById('forecastBadge').style.background = 'rgba(255, 100, 100, 0.2)';
+        document.getElementById('forecastBadge').style.borderColor = '#ff6464';
+    }
 
     // Обновление цены в реальном времени
     let interval;
-    let currentPrice = initialPrice;
+    let currentPrice = parseFloat('{{ price }}');
     const priceSpan = document.getElementById('livePrice');
     const chart = window.myChart;
 
     function updatePrice() {
         const change = (Math.random() - 0.5) * 0.02;
         currentPrice = currentPrice * (1 + change);
-        priceSpan.innerText = currentPrice.toFixed(4);
-
-        const labels = chart.data.labels;
-        const prices = chart.data.datasets[0].data;
-        const newDate = new Date().toLocaleDateString();
-        labels.push(newDate);
-        prices.push(currentPrice);
-        if (labels.length > 20) {
-            labels.shift();
-            prices.shift();
+        if (priceSpan) {
+            priceSpan.innerText = currentPrice.toFixed(4);
         }
-        chart.update();
+
+        if (chart && chart.data && chart.data.datasets.length > 1) {
+            const labels = chart.data.labels;
+            const forecastDataset = chart.data.datasets[1];
+            
+            const newDate = new Date().toLocaleDateString();
+            labels.push(newDate);
+            forecastDataset.data.push(currentPrice);
+            
+            if (labels.length > 20) {
+                labels.shift();
+                forecastDataset.data.shift();
+            }
+            chart.update();
+        }
     }
 
-    interval = setInterval(updatePrice, 2000);
-    document.getElementById('stopLive').onclick = () => {
+    if (interval) {
         clearInterval(interval);
-        interval = null;
-        document.getElementById('stopLive').innerHTML = '<i class="fas fa-play"></i> Возобновить';
-        document.getElementById('stopLive').onclick = () => {
-            interval = setInterval(updatePrice, 2000);
-            document.getElementById('stopLive').innerHTML = '<i class="fas fa-pause"></i> Остановить обновление';
+    }
+    interval = setInterval(updatePrice, 2000);
+    
+    const stopLiveBtn = document.getElementById('stopLive');
+    if (stopLiveBtn) {
+        stopLiveBtn.onclick = () => {
+            clearInterval(interval);
+            interval = null;
+            stopLiveBtn.innerHTML = '<i class="fas fa-play"></i> Возобновить';
+            stopLiveBtn.onclick = () => {
+                interval = setInterval(updatePrice, 2000);
+                stopLiveBtn.innerHTML = '<i class="fas fa-pause"></i> Остановить обновление';
+            };
         };
-    };
+    }
 </script>
 {% endblock %}

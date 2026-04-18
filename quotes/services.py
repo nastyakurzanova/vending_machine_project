@@ -160,18 +160,23 @@ def update_all_quotes():
     updated_count = 0
     for quote in quotes:
         logger.info(f"Обновление цены для {quote.name}...")
+        
+        # Сохраняем текущую цену как предыдущую
+        quote.previous_price = quote.current_price
+        
         new_price = AlphaVantageService.fetch_current_price(quote.name)
-
+        
         if new_price is not None:
             quote.current_price = new_price
             quote.save()
             updated_count += 1
-            logger.info(f"Цена для {quote.name} обновлена до {new_price}")
+            logger.info(f"Цена для {quote.name} обновлена с {quote.previous_price} до {new_price}")
         else:
+            # Если не удалось получить новую цену, не меняем previous_price
+            quote.save()  # сохраняем только updated_at
             logger.warning(f"Не удалось обновить цену для {quote.name}. Старая цена сохранена.")
-
-        # Бесплатный тариф: 5 запросов в минуту → 12 секунд между запросами
+        
         time.sleep(12)
-
+    
     logger.info(f"Обновление завершено. Обновлено {updated_count} из {quotes.count()} котировок.")
     return updated_count
