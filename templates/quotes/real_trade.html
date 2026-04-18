@@ -130,44 +130,31 @@
         <div class="param-field"><label>Цена</label><div class="mock-input">{{ price }}</div></div>
     </div>
     
-    <form method="post" id="realTradeForm">
-        {% csrf_token %}
-        <div class="form-fields">
-            <!-- Поле Тип сделки с радиокнопками -->
-            <div class="field-wrapper">
-                <label>{{ form.trade_type.label }}</label>
-                <div class="radio-group">
-                    {% for radio in form.trade_type %}
-                        <label class="radio-option">
-                            {{ radio.tag }} {{ radio.choice_label }}
-                        </label>
-                    {% endfor %}
-                </div>
+    <form method="post" id="trainingForm">
+    {% csrf_token %}
+    <div class="form-fields">
+        <div class="field-wrapper">
+            <label>{{ form.trade_type.label }}</label>
+            <div class="radio-group">
+                {% for radio in form.trade_type %}
+                    <label class="radio-option">
+                        {{ radio.tag }} {{ radio.choice_label }}
+                    </label>
+                {% endfor %}
             </div>
-            
-            <!-- Поле Объём -->
-            <div class="field-wrapper">
-                <label>{{ form.volume.label }}</label>
-                {{ form.volume }}
-            </div>
-            
-            <!-- Поле Цена -->
-            <div class="field-wrapper">
-                <label>{{ form.price.label }}</label>
-                {{ form.price }}
-            </div>
-            
-            <!-- Скрываем поле Актив (asset), так как оно отображается выше в параметрах -->
-            {% if form.asset %}
-                <div style="display: none;">
-                    {{ form.asset }}
-                </div>
-            {% endif %}
         </div>
-        
-        <button type="submit" class="btn-submit">
-            <i class="fas fa-check-circle"></i> Подтвердить и оформить сделку
-        </button>
-    </form>
+        <div class="field-wrapper">
+            <label>{{ form.volume.label }}</label>
+            <input type="number" name="volume" value="{{ volume }}" step="0.01" id="id_volume" class="form-control" style="background: #0f172f; border: 1px solid #2d3a5e; border-radius: 1rem; padding: 0.6rem 0.9rem; width: 100%; color: white;">
+        </div>
+        <div class="field-wrapper">
+            <label>{{ form.price.label }}</label>
+            <input type="number" name="price" value="{{ price }}" step="0.0001" id="id_price" class="form-control" style="background: #0f172f; border: 1px solid #2d3a5e; border-radius: 1rem; padding: 0.6rem 0.9rem; width: 100%; color: white;">
+        </div>
+    </div>
+    <button type="submit" class="btn-trade">
+        <i class="fas fa-hand-holding-usd"></i> Совершить тренировочную сделку
+    </button>
+</form>
 </div>
 {% endblock %}

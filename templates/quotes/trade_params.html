@@ -86,14 +86,13 @@
 
 {% if quote %}
 <script>
-// Функционал пересчёта цены ↔ объём работает только если выбрана котировка
+// Функционал пересчёта цены ↔ объём
 (function() {
     const quoteId = {{ quote.id }};
     const volumeInput = document.getElementById('id_volume');
     const priceInput = document.getElementById('id_price');
-    let isRecalcLock = false;  // Защита от циклических вызовов
+    let isRecalcLock = false;
 
-    // Получение CSRF-токена из cookie (Django стандарт)
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -170,7 +169,6 @@
         });
     }
 
-    // Подключаем обработчики событий
     volumeInput.addEventListener('input', recalcFromVolume);
     priceInput.addEventListener('input', recalcFromPrice);
 })();

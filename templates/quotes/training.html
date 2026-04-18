@@ -203,31 +203,31 @@
     </div>
 
     <form method="post" id="trainingForm">
-        {% csrf_token %}
-        <div class="form-fields">
-            <div class="field-wrapper">
-                <label>{{ form.trade_type.label }}</label>
-                <div class="radio-group">
-                    {% for radio in form.trade_type %}
-                        <label class="radio-option">
-                            {{ radio.tag }} {{ radio.choice_label }}
-                        </label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="field-wrapper">
-                <label>{{ form.volume.label }}</label>
-                {{ form.volume }}
-            </div>
-            <div class="field-wrapper">
-                <label>{{ form.price.label }}</label>
-                {{ form.price }}
+    {% csrf_token %}
+    <div class="form-fields">
+        <div class="field-wrapper">
+            <label>{{ form.trade_type.label }}</label>
+            <div class="radio-group">
+                {% for radio in form.trade_type %}
+                    <label class="radio-option">
+                        {{ radio.tag }} {{ radio.choice_label }}
+                    </label>
+                {% endfor %}
             </div>
         </div>
-        <button type="submit" class="btn-trade">
-            <i class="fas fa-hand-holding-usd"></i> Совершить тренировочную сделку
-        </button>
-    </form>
+        <div class="field-wrapper">
+            <label>{{ form.volume.label }}</label>
+            <input type="number" name="volume" value="{{ volume }}" step="0.01" id="id_volume" class="form-control" style="background: #0f172f; border: 1px solid #2d3a5e; border-radius: 1rem; padding: 0.6rem 0.9rem; width: 100%; color: white;">
+        </div>
+        <div class="field-wrapper">
+            <label>{{ form.price.label }}</label>
+            <input type="number" name="price" value="{{ price }}" step="0.0001" id="id_price" class="form-control" style="background: #0f172f; border: 1px solid #2d3a5e; border-radius: 1rem; padding: 0.6rem 0.9rem; width: 100%; color: white;">
+        </div>
+    </div>
+    <button type="submit" class="btn-trade">
+        <i class="fas fa-hand-holding-usd"></i> Совершить тренировочную сделку
+    </button>
+</form>
 </div>
 
 <div class="live-update">
@@ -239,70 +239,56 @@
 </div>
 
 <script>
-    // Функция для безопасного парсинга JSON
+    // Безопасный парсинг JSON
     function safeParseJSON(data) {
-        if (!data || data === '[]' || data === 'null' || data === 'undefined') {
-            console.log('Empty or null data received');
-            return [];
-        }
+        if (!data || data === '[]' || data === 'null' || data === 'undefined') return [];
         try {
-            // Если данные уже объект
-            if (typeof data === 'object') {
-                return data;
-            }
-            // Если строка
+            if (typeof data === 'object') return data;
             const parsed = JSON.parse(data);
             return Array.isArray(parsed) ? parsed : [];
         } catch(e) {
-            console.error('JSON parse error:', e, 'Data:', data);
+            console.error('JSON parse error:', e);
             return [];
         }
     }
     
-    // Получаем данные из контекста
-    let historicalChartData = [];
-    let forecastChartData = [];
+    // Данные из контекста
+    const historicalData = safeParseJSON('{{ historical_data|escapejs }}');
+    const forecastData = safeParseJSON('{{ graph_data|escapejs }}');
     
-    try {
-        historicalChartData = safeParseJSON('{{ historical_data|escapejs }}');
-        forecastChartData = safeParseJSON('{{ graph_data|escapejs }}');
-    } catch(e) {
-        console.error('Error parsing data:', e);
-    }
+    console.log('Historical data:', historicalData);
+    console.log('Forecast data:', forecastData);
     
-    console.log('Historical data points:', historicalChartData.length, historicalChartData);
-    console.log('Forecast data points:', forecastChartData.length, forecastChartData);
-    
-    // Отображаем информацию о данных
     const dataInfo = document.getElementById('dataInfo');
-    dataInfo.innerHTML = `Исторических точек: ${historicalChartData.length} | Прогнозируемых точек: ${forecastChartData.length}`;
+    dataInfo.innerHTML = `Исторических точек: ${historicalData.length} | Прогнозируемых точек: ${forecastData.length}`;
     
-    // Подготавливаем данные для исторического графика
+    // Подготовка исторических данных
     let historicalLabels = [];
-    let historicalPricesData = [];
+    let historicalPrices = [];
+    historicalData.forEach(point => {
+        if (point.date && point.price !== undefined) {
+            historicalLabels.push(point.date);
+            historicalPrices.push(parseFloat(point.price));
+        }
+    });
     
-    // Добавляем только исторические данные
-    if (historicalChartData && historicalChartData.length > 0) {
-        historicalChartData.forEach((point, index) => {
-            if (point && point.date && point.price !== undefined && point.price !== null) {
-                historicalLabels.push(point.date);
-                historicalPricesData.push(parseFloat(point.price));
-                console.log(`Historical point ${index}: ${point.date} = ${point.price}`);
-            }
-        });
-    }
+    // Подготовка прогнозных данных
+    let forecastLabels = [];
+    let forecastPrices = [];
+    forecastData.forEach(point => {
+        if (point.date && point.price !== undefined) {
+            forecastLabels.push(point.date);
+            forecastPrices.push(parseFloat(point.price));
+        }
+    });
     
-    // Если нет исторических данных, показываем сообщение
+    // Если нет исторических данных, создаём заглушку
     if (historicalLabels.length === 0) {
-        console.warn('No historical data points found');
         historicalLabels = ['Нет данных'];
-        historicalPricesData = [0];
-        dataInfo.innerHTML += ' | Нет исторических данных';
-    } else {
-        dataInfo.innerHTML += ` | Загружено ${historicalLabels.length} исторических точек`;
+        historicalPrices = [0];
     }
     
-    // Создаём график ТОЛЬКО с историческими данными
+    // Создание графика
     const ctx = document.getElementById('forecastChart').getContext('2d');
     window.myChart = new Chart(ctx, {
         type: 'line',
@@ -311,15 +297,12 @@
             datasets: [
                 {
                     label: 'Исторические данные',
-                    data: historicalPricesData,
+                    data: historicalPrices,
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.1,
                     fill: false,
-                    pointBackgroundColor: '#3b82f6',
-                    pointBorderColor: '#fff',
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
+                    pointRadius: 3,
                     borderWidth: 2
                 }
             ]
@@ -327,105 +310,52 @@
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (context.parsed.y !== null && context.parsed.y !== 0) {
-                                label += ': ' + context.parsed.y.toFixed(4);
-                            }
-                            return label;
-                        }
-                    }
-                },
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#eef2ff',
-                        usePointStyle: true,
-                        boxWidth: 10
-                    }
-                }
+                tooltip: { mode: 'index', intersect: false },
+                legend: { labels: { color: '#eef2ff' } }
             },
             scales: {
-                x: {
-                    ticks: { 
-                        color: '#a0b3d9',
-                        maxRotation: 45,
-                        minRotation: 45
-                    },
+                x: { 
+                    ticks: { color: '#a0b3d9', maxRotation: 45, minRotation: 45 },
                     grid: { color: '#1e2a44' }
                 },
-                y: {
+                y: { 
                     ticks: { color: '#a0b3d9' },
-                    grid: { color: '#1e2a44' },
-                    title: {
-                        display: true,
-                        text: 'Цена',
-                        color: '#a0b3d9'
-                    }
+                    grid: { color: '#1e2a44' }
                 }
             }
         }
     });
     
-    console.log('Chart created with', historicalLabels.length, 'labels');
-    
-    // Функция для добавления прогнозируемых данных с задержкой
-    function addForecastData() {
-        console.log('Adding forecast data...');
-        
-        if (!forecastChartData || forecastChartData.length === 0) {
-            console.warn('No forecast data available');
+    // Функция добавления прогнозного датасета
+    function addForecastDataset() {
+        if (forecastPrices.length === 0) {
             document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Нет данных для прогноза';
-            document.getElementById('forecastBadge').style.background = 'rgba(255, 100, 100, 0.2)';
-            document.getElementById('forecastBadge').style.borderColor = '#ff6464';
             return;
         }
         
-        // Получаем текущие данные графика
-        const currentLabels = [...window.myChart.data.labels];
-        const currentHistoricalData = [...window.myChart.data.datasets[0].data];
+        // Объединяем лейблы: история + прогноз (без дублирования последней точки)
+        const lastHistoricalLabel = historicalLabels[historicalLabels.length - 1];
+        const firstForecastLabel = forecastLabels[0];
         
-        // Создаем массив для прогнозируемых данных
-        let newLabels = [...currentLabels];
-        let forecastValues = [];
+        let combinedLabels = [...historicalLabels];
+        let forecastValues = new Array(historicalLabels.length).fill(null);
         
-        // Заполняем null для всех исторических точек
-        for (let i = 0; i < currentLabels.length; i++) {
-            forecastValues.push(null);
+        // Если первая прогнозная дата совпадает с последней исторической, пропускаем её в лейблах
+        let startIdx = 0;
+        if (lastHistoricalLabel === firstForecastLabel) {
+            startIdx = 1;
+            // Вместо null ставим последнюю историческую цену для соединения
+            forecastValues[forecastValues.length - 1] = historicalPrices[historicalPrices.length - 1];
         }
         
-        // Получаем последнюю историческую цену
-        const lastHistoricalPrice = currentHistoricalData[currentHistoricalData.length - 1];
-        console.log('Last historical price:', lastHistoricalPrice);
+        for (let i = startIdx; i < forecastLabels.length; i++) {
+            combinedLabels.push(forecastLabels[i]);
+            forecastValues.push(forecastPrices[i]);
+        }
         
-        // Добавляем точки прогноза
-        forecastChartData.forEach((point, index) => {
-            if (point && point.date && point.price !== undefined && point.price !== null) {
-                console.log(`Adding forecast point ${index}: ${point.date} = ${point.price}`);
-                
-                if (index === 0 && lastHistoricalPrice !== undefined && lastHistoricalPrice !== 0 && currentLabels[0] !== 'Нет данных') {
-                    // Обновляем последнюю точку прогноза ценой из истории для соединения
-                    forecastValues[forecastValues.length - 1] = parseFloat(lastHistoricalPrice);
-                    // Добавляем новую точку
-                    newLabels.push(point.date);
-                    forecastValues.push(parseFloat(point.price));
-                } else {
-                    newLabels.push(point.date);
-                    forecastValues.push(parseFloat(point.price));
-                }
-            }
-        });
-        
-        // Добавляем новый датасет с прогнозом
+        window.myChart.data.labels = combinedLabels;
         window.myChart.data.datasets.push({
             label: 'Прогнозируемые данные',
             data: forecastValues,
@@ -433,114 +363,182 @@
             backgroundColor: 'rgba(45, 212, 191, 0.1)',
             tension: 0.1,
             fill: false,
-            pointBackgroundColor: '#2dd4bf',
-            pointBorderColor: '#fff',
-            pointRadius: 5,
-            pointHoverRadius: 7,
+            pointRadius: 3,
             borderWidth: 2,
             borderDash: [5, 5]
         });
         
-        // Обновляем лейблы
-        window.myChart.data.labels = newLabels;
-        
-        // Обновляем график
         window.myChart.update();
-        
-        console.log('Forecast data added, total labels:', newLabels.length);
-        
-        // Обновляем совет
-        if (forecastChartData.length > 0) {
-            const validPrices = forecastChartData.filter(p => p && p.price !== undefined);
-            if (validPrices.length > 0) {
-                const firstForecastPrice = parseFloat(validPrices[0].price);
-                const lastForecastPrice = parseFloat(validPrices[validPrices.length - 1].price);
-                const adviceBox = document.getElementById('adviceBox');
-                const adviceIcon = adviceBox.querySelector('i');
-                const adviceText = document.getElementById('adviceText');
-                
-                if (lastForecastPrice > firstForecastPrice) {
-                    adviceIcon.className = 'fas fa-arrow-up';
-                    adviceText.textContent = 'Прогноз положительный. Рекомендуется покупка.';
-                } else {
-                    adviceIcon.className = 'fas fa-arrow-down';
-                    adviceText.textContent = 'Прогноз отрицательный. Рекомендуется продажа.';
-                }
-                adviceBox.style.display = 'flex';
-            }
-        }
-        
-        // Обновляем статус
         document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Прогноз загружен!';
-        document.getElementById('forecastBadge').style.background = 'rgba(45,212,191,0.2)';
         
-        setTimeout(() => {
-            const badge = document.getElementById('forecastBadge');
-            if (badge) {
-                badge.style.animation = 'none';
-                badge.style.opacity = '0.7';
+        // Вывод совета
+        if (forecastPrices.length > 0) {
+            const firstPrice = forecastPrices[0];
+            const lastPrice = forecastPrices[forecastPrices.length - 1];
+            const adviceBox = document.getElementById('adviceBox');
+            const adviceIcon = adviceBox.querySelector('i');
+            const adviceText = document.getElementById('adviceText');
+            if (lastPrice > firstPrice) {
+                adviceIcon.className = 'fas fa-arrow-up';
+                adviceText.textContent = 'Прогноз положительный. Рекомендуется покупка.';
+            } else {
+                adviceIcon.className = 'fas fa-arrow-down';
+                adviceText.textContent = 'Прогноз отрицательный. Рекомендуется продажа.';
             }
-        }, 3000);
+            adviceBox.style.display = 'flex';
+        }
     }
     
     // Добавляем прогноз через 1.5 секунды
-    if (forecastChartData && forecastChartData.length > 0) {
-        console.log('Scheduling forecast addition in 1.5 seconds');
-        setTimeout(() => {
-            addForecastData();
-        }, 1500);
-    } else {
-        console.log('No forecast data to add');
-        document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Нет данных для прогноза';
-        document.getElementById('forecastBadge').style.background = 'rgba(255, 100, 100, 0.2)';
-        document.getElementById('forecastBadge').style.borderColor = '#ff6464';
-    }
-
-    // Обновление цены в реальном времени
-    let interval;
-    let currentPrice = parseFloat('{{ price }}');
-    const priceSpan = document.getElementById('livePrice');
-    const chart = window.myChart;
-
-    function updatePrice() {
-        const change = (Math.random() - 0.5) * 0.02;
-        currentPrice = currentPrice * (1 + change);
-        if (priceSpan) {
-            priceSpan.innerText = currentPrice.toFixed(4);
-        }
-
-        if (chart && chart.data && chart.data.datasets.length > 1) {
-            const labels = chart.data.labels;
-            const forecastDataset = chart.data.datasets[1];
-            
-            const newDate = new Date().toLocaleDateString();
-            labels.push(newDate);
-            forecastDataset.data.push(currentPrice);
-            
-            if (labels.length > 20) {
-                labels.shift();
-                forecastDataset.data.shift();
-            }
-            chart.update();
-        }
-    }
-
-    if (interval) {
-        clearInterval(interval);
-    }
-    interval = setInterval(updatePrice, 2000);
+    setTimeout(addForecastDataset, 1500);
     
-    const stopLiveBtn = document.getElementById('stopLive');
-    if (stopLiveBtn) {
-        stopLiveBtn.onclick = () => {
-            clearInterval(interval);
-            interval = null;
-            stopLiveBtn.innerHTML = '<i class="fas fa-play"></i> Возобновить';
-            stopLiveBtn.onclick = () => {
-                interval = setInterval(updatePrice, 2000);
-                stopLiveBtn.innerHTML = '<i class="fas fa-pause"></i> Остановить обновление';
-            };
-        };
+    // === Функционал реального времени ===
+    let liveInterval;
+    let currentLivePrice = parseFloat('{{ price }}');
+    const livePriceSpan = document.getElementById('livePrice');
+    
+    // Максимальное количество отображаемых прогнозных точек (в реальном времени)
+    const MAX_LIVE_POINTS = 20;
+    
+    function updateLivePrice() {
+        // Изменение цены (случайное блуждание)
+        const change = (Math.random() - 0.5) * 0.02;
+        currentLivePrice = currentLivePrice * (1 + change);
+        livePriceSpan.innerText = currentLivePrice.toFixed(4);
+        
+        const chart = window.myChart;
+        if (!chart) return;
+        
+        // Ищем прогнозный датасет (индекс 1)
+        const forecastDataset = chart.data.datasets[1];
+        if (!forecastDataset) return;
+        
+        // Получаем текущие лейблы и данные
+        let labels = chart.data.labels;
+        let forecastData = forecastDataset.data;
+        
+        // Генерируем новую метку времени (текущее время с секундами для уникальности)
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const dateStr = now.toLocaleDateString('ru-RU');
+        const newLabel = `${dateStr} ${timeStr}`;
+        
+        // Добавляем новую точку
+        labels.push(newLabel);
+        forecastData.push(currentLivePrice);
+        
+        // Храним количество изначальных точек прогноза
+        if (!window.initialForecastCount) {
+            window.initialForecastCount = forecastPrices.length;
+        }
+        
+        const totalForecastPoints = forecastData.filter(v => v !== null).length;
+        if (totalForecastPoints > window.initialForecastCount + MAX_LIVE_POINTS) {
+            // Удаляем первый не-null элемент из прогнозного датасета
+            for (let i = 0; i < forecastData.length; i++) {
+                if (forecastData[i] !== null) {
+                    forecastData.splice(i, 1);
+                    labels.splice(i, 1);
+                    break;
+                }
+            }
+        }
+        
+        chart.update();
     }
+    
+    // Запускаем обновление каждые 2 секунды
+    liveInterval = setInterval(updateLivePrice, 2000);
+    
+    // Кнопка остановки/возобновления
+    const stopLiveBtn = document.getElementById('stopLive');
+    let isLiveRunning = true;
+    stopLiveBtn.addEventListener('click', function() {
+        if (isLiveRunning) {
+            clearInterval(liveInterval);
+            stopLiveBtn.innerHTML = '<i class="fas fa-play"></i> Возобновить';
+        } else {
+            liveInterval = setInterval(updateLivePrice, 2000);
+            stopLiveBtn.innerHTML = '<i class="fas fa-pause"></i> Остановить обновление';
+        }
+        isLiveRunning = !isLiveRunning;
+    });
+    
+    // === Функционал пересчёта цены/объёма ===
+    (function() {
+        const quoteId = {{ quote.id }};
+        const volumeInput = document.getElementById('id_volume');
+        const priceInput = document.getElementById('id_price');
+        let isRecalcLock = false;
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+        
+        function recalcFromVolume() {
+            if (isRecalcLock) return;
+            const volume = volumeInput.value.trim();
+            if (volume === '') return;
+            isRecalcLock = true;
+            fetch("{% url 'quotes:recalc_price_volume' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken
+                },
+                body: new URLSearchParams({ 'quote_id': quoteId, 'volume': volume })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.price !== undefined) priceInput.value = data.price;
+                isRecalcLock = false;
+            })
+            .catch(error => {
+                console.error('Ошибка пересчёта цены:', error);
+                isRecalcLock = false;
+            });
+        }
+        
+        function recalcFromPrice() {
+            if (isRecalcLock) return;
+            const price = priceInput.value.trim();
+            if (price === '') return;
+            isRecalcLock = true;
+            fetch("{% url 'quotes:recalc_price_volume' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken
+                },
+                body: new URLSearchParams({ 'quote_id': quoteId, 'price': price })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.volume !== undefined) volumeInput.value = data.volume;
+                isRecalcLock = false;
+            })
+            .catch(error => {
+                console.error('Ошибка пересчёта объёма:', error);
+                isRecalcLock = false;
+            });
+        }
+        
+        volumeInput.addEventListener('input', recalcFromVolume);
+        priceInput.addEventListener('input', recalcFromPrice);
+    })();
 </script>
 {% endblock %}
