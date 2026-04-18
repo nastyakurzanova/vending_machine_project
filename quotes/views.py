@@ -92,13 +92,23 @@ def generate_sample_historical_data(base_price: float, days: int = 5) -> List[Di
 def forecast_prices_to_graph_data(
     forecast_prices: List[float],
     historical_data: List[Dict[str, Any]],
+    timeframe: str,                         # новый параметр
     start_date_override: Optional[datetime] = None
 ) -> List[Dict[str, Any]]:
     """
     Преобразует список прогнозируемых цен в список словарей с датами.
+    Шаг дат зависит от timeframe.
     """
     import datetime
-    
+
+    # Шаг в днях для каждого периода
+    step_days_map = {
+        '1d': 1,
+        '1w': 7,
+        '1m': 30
+    }
+    step_days = step_days_map.get(timeframe, 1)
+
     if historical_data:
         last_hist_date = datetime.datetime.strptime(historical_data[-1]['date'], '%Y-%m-%d')
         start_date = last_hist_date
@@ -106,7 +116,7 @@ def forecast_prices_to_graph_data(
         start_date = start_date_override
     else:
         start_date = datetime.datetime.now()
-    
+
     graph_data = []
     for i, price in enumerate(forecast_prices, start=1):
         # Приведение к float
@@ -119,15 +129,14 @@ def forecast_prices_to_graph_data(
                 price_value = float(price)
             except (ValueError, TypeError):
                 price_value = 0.0
-        
-        next_date = start_date + datetime.timedelta(days=i)
+
+        next_date = start_date + datetime.timedelta(days=i * step_days)
         graph_data.append({
             'date': next_date.strftime('%Y-%m-%d'),
             'price': round(price_value, 4)
         })
-    
-    return graph_data
 
+    return graph_data
 
 def generate_forecast(
     current_price: float,
@@ -535,7 +544,7 @@ def training(request):
     )
     
     # Подготовка данных для графика (прогноз)
-    graph_data = forecast_prices_to_graph_data(forecast_prices, historical_data)
+    graph_data = forecast_prices_to_graph_data(forecast_prices, historical_data, timeframe)
     
     # Обработка POST-запроса на совершение сделки
     if request.method == 'POST':

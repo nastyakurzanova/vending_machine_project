@@ -239,7 +239,7 @@
 </div>
 
 <script>
-    // Безопасный парсинг JSON
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
     function safeParseJSON(data) {
         if (!data || data === '[]' || data === 'null' || data === 'undefined') return [];
         try {
@@ -251,61 +251,77 @@
             return [];
         }
     }
-    
-    // Данные из контекста
+
+    // Получение следующей даты от строки YYYY-MM-DD с заданным шагом в днях
+    function getNextDate(dateStr, stepDays) {
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1;
+        const day = parseInt(parts[2]);
+        const d = new Date(year, month, day);
+        d.setDate(d.getDate() + stepDays);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    }
+
+    // ==================== ДАННЫЕ ИЗ КОНТЕКСТА ====================
+    const timeframe = '{{ timeframe }}';                     // например '1d', '1w', '1m'
+    const stepDaysMap = { '1d': 1, '1w': 7, '1m': 30 };
+    const stepDays = stepDaysMap[timeframe] || 1;
+
     const historicalData = safeParseJSON('{{ historical_data|escapejs }}');
     const forecastData = safeParseJSON('{{ graph_data|escapejs }}');
-    
-    console.log('Historical data:', historicalData);
-    console.log('Forecast data:', forecastData);
-    
+
+    console.log('Historical:', historicalData);
+    console.log('Forecast:', forecastData);
+    console.log('Timeframe:', timeframe, 'Step days:', stepDays);
+
     const dataInfo = document.getElementById('dataInfo');
-    dataInfo.innerHTML = `Исторических точек: ${historicalData.length} | Прогнозируемых точек: ${forecastData.length}`;
-    
-    // Подготовка исторических данных
+    dataInfo.innerHTML = `Исторических точек: ${historicalData.length} | Прогнозируемых: ${forecastData.length} | Шаг: ${stepDays} дн.`;
+
+    // ==================== ПОДГОТОВКА ДАННЫХ ====================
     let historicalLabels = [];
     let historicalPrices = [];
-    historicalData.forEach(point => {
-        if (point.date && point.price !== undefined) {
-            historicalLabels.push(point.date);
-            historicalPrices.push(parseFloat(point.price));
+    historicalData.forEach(p => {
+        if (p.date && p.price !== undefined) {
+            historicalLabels.push(p.date);
+            historicalPrices.push(parseFloat(p.price));
         }
     });
-    
-    // Подготовка прогнозных данных
+
     let forecastLabels = [];
     let forecastPrices = [];
-    forecastData.forEach(point => {
-        if (point.date && point.price !== undefined) {
-            forecastLabels.push(point.date);
-            forecastPrices.push(parseFloat(point.price));
+    forecastData.forEach(p => {
+        if (p.date && p.price !== undefined) {
+            forecastLabels.push(p.date);
+            forecastPrices.push(parseFloat(p.price));
         }
     });
-    
-    // Если нет исторических данных, создаём заглушку
+
     if (historicalLabels.length === 0) {
         historicalLabels = ['Нет данных'];
         historicalPrices = [0];
     }
-    
-    // Создание графика
+
+    // ==================== СОЗДАНИЕ ГРАФИКА ====================
     const ctx = document.getElementById('forecastChart').getContext('2d');
     window.myChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: historicalLabels,
-            datasets: [
-                {
-                    label: 'Исторические данные',
-                    data: historicalPrices,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.1,
-                    fill: false,
-                    pointRadius: 3,
-                    borderWidth: 2
-                }
-            ]
+            datasets: [{
+                label: 'Исторические данные',
+                data: historicalPrices,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.1,
+                fill: false,
+                pointRadius: 3,
+                borderWidth: 2
+            }]
         },
         options: {
             responsive: true,
@@ -327,34 +343,33 @@
             }
         }
     });
-    
-    // Функция добавления прогнозного датасета
+
+    // ==================== ДОБАВЛЕНИЕ ПРОГНОЗНОГО ДАТАСЕТА ====================
+    let lastForecastDate = null;   // будет хранить последнюю дату прогноза (для динамики)
+
     function addForecastDataset() {
         if (forecastPrices.length === 0) {
             document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Нет данных для прогноза';
             return;
         }
-        
-        // Объединяем лейблы: история + прогноз (без дублирования последней точки)
-        const lastHistoricalLabel = historicalLabels[historicalLabels.length - 1];
+
+        const lastHistLabel = historicalLabels[historicalLabels.length - 1];
         const firstForecastLabel = forecastLabels[0];
-        
+
         let combinedLabels = [...historicalLabels];
         let forecastValues = new Array(historicalLabels.length).fill(null);
-        
-        // Если первая прогнозная дата совпадает с последней исторической, пропускаем её в лейблах
+
         let startIdx = 0;
-        if (lastHistoricalLabel === firstForecastLabel) {
+        if (lastHistLabel === firstForecastLabel) {
             startIdx = 1;
-            // Вместо null ставим последнюю историческую цену для соединения
             forecastValues[forecastValues.length - 1] = historicalPrices[historicalPrices.length - 1];
         }
-        
+
         for (let i = startIdx; i < forecastLabels.length; i++) {
             combinedLabels.push(forecastLabels[i]);
             forecastValues.push(forecastPrices[i]);
         }
-        
+
         window.myChart.data.labels = combinedLabels;
         window.myChart.data.datasets.push({
             label: 'Прогнозируемые данные',
@@ -367,11 +382,16 @@
             borderWidth: 2,
             borderDash: [5, 5]
         });
-        
+
         window.myChart.update();
+
+        // Сохраняем последнюю дату прогноза для будущих динамических точек
+        lastForecastDate = combinedLabels[combinedLabels.length - 1];
+        console.log('Initial forecast added. Last forecast date:', lastForecastDate);
+
         document.getElementById('forecastBadge').innerHTML = '<i class="fas fa-chart-line"></i> Прогноз загружен!';
-        
-        // Вывод совета
+
+        // Совет
         if (forecastPrices.length > 0) {
             const firstPrice = forecastPrices[0];
             const lastPrice = forecastPrices[forecastPrices.length - 1];
@@ -388,69 +408,68 @@
             adviceBox.style.display = 'flex';
         }
     }
-    
-    // Добавляем прогноз через 1.5 секунды
+
     setTimeout(addForecastDataset, 1500);
-    
-    // === Функционал реального времени ===
+
+    // ==================== РЕАЛЬНОЕ ВРЕМЯ (ДИНАМИЧЕСКИЕ ТОЧКИ) ====================
     let liveInterval;
     let currentLivePrice = parseFloat('{{ price }}');
     const livePriceSpan = document.getElementById('livePrice');
-    
-    // Максимальное количество отображаемых прогнозных точек (в реальном времени)
-    const MAX_LIVE_POINTS = 20;
-    
+    const MAX_LIVE_POINTS = 20;   // максимум динамических точек
+
     function updateLivePrice() {
-        // Изменение цены (случайное блуждание)
+        // Моделируем изменение цены
         const change = (Math.random() - 0.5) * 0.02;
         currentLivePrice = currentLivePrice * (1 + change);
         livePriceSpan.innerText = currentLivePrice.toFixed(4);
-        
+
         const chart = window.myChart;
         if (!chart) return;
-        
-        // Ищем прогнозный датасет (индекс 1)
+
         const forecastDataset = chart.data.datasets[1];
         if (!forecastDataset) return;
-        
-        // Получаем текущие лейблы и данные
+
         let labels = chart.data.labels;
-        let forecastData = forecastDataset.data;
-        
-        // Генерируем новую метку времени (текущее время с секундами для уникальности)
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const dateStr = now.toLocaleDateString('ru-RU');
-        const newLabel = `${dateStr} ${timeStr}`;
-        
-        // Добавляем новую точку
-        labels.push(newLabel);
-        forecastData.push(currentLivePrice);
-        
-        // Храним количество изначальных точек прогноза
-        if (!window.initialForecastCount) {
-            window.initialForecastCount = forecastPrices.length;
+        let forecastDataArr = forecastDataset.data;
+
+        // Определяем следующую дату на основе последней даты прогноза
+        if (!lastForecastDate) {
+            // fallback
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            lastForecastDate = `${y}-${m}-${d}`;
         }
-        
-        const totalForecastPoints = forecastData.filter(v => v !== null).length;
-        if (totalForecastPoints > window.initialForecastCount + MAX_LIVE_POINTS) {
-            // Удаляем первый не-null элемент из прогнозного датасета
-            for (let i = 0; i < forecastData.length; i++) {
-                if (forecastData[i] !== null) {
-                    forecastData.splice(i, 1);
+
+        const nextDate = getNextDate(lastForecastDate, stepDays);
+        labels.push(nextDate);
+        forecastDataArr.push(currentLivePrice);
+        lastForecastDate = nextDate;
+
+        // Подсчитываем количество не-null значений в прогнозном датасете
+        const totalForecastPoints = forecastDataArr.filter(v => v !== null).length;
+        const initialForecastCount = forecastLabels.length;
+
+        // Если динамических точек слишком много, удаляем самую старую динамическую
+        if (totalForecastPoints > initialForecastCount + MAX_LIVE_POINTS) {
+            // Находим первый не-null элемент и удаляем его
+            for (let i = 0; i < forecastDataArr.length; i++) {
+                if (forecastDataArr[i] !== null) {
+                    forecastDataArr.splice(i, 1);
                     labels.splice(i, 1);
                     break;
                 }
             }
         }
-        
+
         chart.update();
     }
-    
-    // Запускаем обновление каждые 2 секунды
+
+    // Запускаем обновление
     liveInterval = setInterval(updateLivePrice, 2000);
-    
-    // Кнопка остановки/возобновления
+
+    // Кнопка стоп/старт
     const stopLiveBtn = document.getElementById('stopLive');
     let isLiveRunning = true;
     stopLiveBtn.addEventListener('click', function() {
@@ -463,14 +482,14 @@
         }
         isLiveRunning = !isLiveRunning;
     });
-    
-    // === Функционал пересчёта цены/объёма ===
+
+    // ==================== ПЕРЕСЧЁТ ОБЪЁМ ↔ ЦЕНА ====================
     (function() {
         const quoteId = {{ quote.id }};
         const volumeInput = document.getElementById('id_volume');
         const priceInput = document.getElementById('id_price');
         let isRecalcLock = false;
-        
+
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -486,7 +505,7 @@
             return cookieValue;
         }
         const csrftoken = getCookie('csrftoken');
-        
+
         function recalcFromVolume() {
             if (isRecalcLock) return;
             const volume = volumeInput.value.trim();
@@ -501,17 +520,17 @@
                 },
                 body: new URLSearchParams({ 'quote_id': quoteId, 'volume': volume })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.price !== undefined) priceInput.value = data.price;
                 isRecalcLock = false;
             })
-            .catch(error => {
-                console.error('Ошибка пересчёта цены:', error);
+            .catch(e => {
+                console.error('Ошибка пересчёта цены:', e);
                 isRecalcLock = false;
             });
         }
-        
+
         function recalcFromPrice() {
             if (isRecalcLock) return;
             const price = priceInput.value.trim();
@@ -526,17 +545,17 @@
                 },
                 body: new URLSearchParams({ 'quote_id': quoteId, 'price': price })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.volume !== undefined) volumeInput.value = data.volume;
                 isRecalcLock = false;
             })
-            .catch(error => {
-                console.error('Ошибка пересчёта объёма:', error);
+            .catch(e => {
+                console.error('Ошибка пересчёта объёма:', e);
                 isRecalcLock = false;
             });
         }
-        
+
         volumeInput.addEventListener('input', recalcFromVolume);
         priceInput.addEventListener('input', recalcFromPrice);
     })();
