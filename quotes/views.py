@@ -26,6 +26,11 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
+import logging
+from .prediction import get_forecaster
+
+logger = logging.getLogger(__name__)
+
 from .forms import (
     ReportForm, TradeParamsForm, TimeSettingsForm,
     TrainingTradeForm, RealTradeForm
@@ -33,9 +38,7 @@ from .forms import (
 from .models import Quote, TrainingTrade, RealTrade
 from .services import AlphaVantageService
 
-# =============================================================================
 # Конфигурация шрифтов для PDF (один раз при загрузке модуля)
-# =============================================================================
 FONT_PATH = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans.ttf')
 if os.path.exists(FONT_PATH):
     pdfmetrics.registerFont(TTFont('DejaVuSans', FONT_PATH))
@@ -44,9 +47,8 @@ else:
     DEFAULT_FONT = 'Helvetica'
 
 
-# =============================================================================
+
 # Вспомогательные функции
-# =============================================================================
 
 def get_historical_prices_and_volumes(user, quote) -> tuple[List[float], List[float], List[Dict[str, Any]]]:
     """
@@ -144,72 +146,82 @@ def generate_forecast(
     algorithm: str,
     historical_data: Optional[List[float]] = None,
     historical_volumes: Optional[List[float]] = None
-) -> List[float]:
+) -> tuple[List[float], dict]:
     """
-    Генерирует список прогнозируемых цен на основе выбранного алгоритма.
+    Генерирует список прогнозируемых цен и метаданные модели.
+    
+    Returns:
+        tuple: (forecast_prices, metadata)
+            metadata = {
+                'confidence': float,      # уверенность модели в процентах (0-100)
+                'rmse': float,            # среднеквадратичная ошибка на истории (если есть)
+                'model_used': str         # фактически использованный алгоритм
+            }
     """
     points_count_map = {
-        'day': 10,
-        'week': 30,
-        'month': 90,
-        'year': 365
+        '1d': 10,
+        '1w': 30,
+        '1m': 90,
     }
     points_count = points_count_map.get(timeframe, 10)
     
+    metadata = {
+        'confidence': 50.0,
+        'rmse': None,
+        'model_used': algorithm
+    }
+    
+    # Если исторических данных достаточно, пытаемся использовать реальные предикторы
+    if historical_data and len(historical_data) >= 5:
+        try:
+            forecaster = get_forecaster(algorithm)
+            
+            # Для моделей, поддерживающих fit/predict
+            if hasattr(forecaster, 'fit') and hasattr(forecaster, 'predict'):
+                # Обучаем на исторических данных (без последней точки для backtest)
+                train_data = historical_data[:-1]
+                test_value = historical_data[-1]
+                
+                if len(train_data) >= 4:
+                    forecaster.fit(train_data, volumes=historical_volumes[:-1] if historical_volumes else None)
+                    forecast = forecaster.predict(current_price, points_count, step_days=1, historical_data=train_data)
+                    
+                    # Оценка точности: предсказываем последнюю известную точку и сравниваем
+                    predicted_last = forecaster.predict(train_data[-1], 1, step_days=1, historical_data=train_data[:-1])[0]
+                    error = abs(predicted_last - test_value)
+                    rmse = error  # упрощённо, т.к. одна точка
+                    price_scale = current_price if current_price > 0 else 1.0
+                    accuracy = max(0, 1 - (rmse / price_scale))
+                    metadata['confidence'] = round(accuracy * 100, 1)
+                    metadata['rmse'] = round(rmse, 4)
+                    metadata['model_used'] = algorithm
+                    
+                    return forecast, metadata
+        except Exception as e:
+            logger.warning(f"Не удалось использовать {algorithm}: {e}. Используем fallback.")
+    
+    # Fallback: улучшенное случайное блуждание с дрейфом на основе истории
     forecast = []
     current = float(current_price)
     
-    if algorithm == 'random':
-        for _ in range(points_count):
-            change = (random.random() - 0.5) * 0.05  # ±2.5%
-            current *= (1 + change)
-            forecast.append(round(current, 4))
+    # Вычисляем средний тренд из истории (если есть)
+    drift = 0.0
+    if historical_data and len(historical_data) >= 2:
+        changes = [(historical_data[i] - historical_data[i-1]) / historical_data[i-1] 
+                   for i in range(1, len(historical_data))]
+        drift = sum(changes) / len(changes) if changes else 0.0
     
-    elif algorithm == 'moving_average' and historical_data and len(historical_data) >= 3:
-        window_size = min(5, len(historical_data))
-        last_prices = historical_data[-window_size:]
-        if len(last_prices) > 1:
-            avg_change = sum(last_prices[i] - last_prices[i-1] for i in range(1, len(last_prices))) / (len(last_prices) - 1)
-        else:
-            avg_change = 0
-        
-        for _ in range(points_count):
-            current = current + avg_change
-            current *= (1 + (random.random() - 0.5) * 0.01)
-            forecast.append(round(current, 4))
+    for _ in range(points_count):
+        # Нормальное распределение с небольшим дрейфом
+        change = np.random.normal(drift, 0.02)
+        current *= (1 + change)
+        forecast.append(round(current, 4))
     
-    elif algorithm == 'linear' and historical_data and len(historical_data) >= 2:
-        x = list(range(len(historical_data)))
-        y = historical_data
-        n = len(x)
-        x_mean = sum(x) / n
-        y_mean = sum(y) / n
-        
-        numerator = sum((x[i] - x_mean) * (y[i] - y_mean) for i in range(n))
-        denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
-        
-        if denominator != 0:
-            slope = numerator / denominator
-            intercept = y_mean - slope * x_mean
-            for i in range(1, points_count + 1):
-                predicted = intercept + slope * (n + i)
-                forecast.append(round(predicted, 4))
-        else:
-            # Fallback to random
-            for _ in range(points_count):
-                change = (random.random() - 0.5) * 0.05
-                current *= (1 + change)
-                forecast.append(round(current, 4))
+    # Уверенность при fallback ниже
+    metadata['confidence'] = 40.0 if historical_data else 30.0
+    metadata['model_used'] = 'fallback_random_walk'
     
-    else:
-        # Default: случайное блуждание
-        for _ in range(points_count):
-            change = (random.random() - 0.5) * 0.03
-            current *= (1 + change)
-            forecast.append(round(current, 4))
-    
-    return forecast
-
+    return forecast, metadata
 
 def calculate_profit_loss(
     trade_type: str,
@@ -322,9 +334,7 @@ def build_pdf_report(
     doc.build(story)
 
 
-# =============================================================================
 # Представления
-# =============================================================================
 
 @login_required
 def update_forecast_ajax(request):
@@ -536,8 +546,8 @@ def training(request):
         historical_prices = [item['price'] for item in sample_data]
         historical_volumes = []  # не используется
     
-    # Генерация прогноза
-    forecast_prices = generate_forecast(
+           # Генерация прогноза (теперь возвращает кортеж)
+    forecast_prices, forecast_meta = generate_forecast(
         price, timeframe, algorithm,
         historical_data=historical_prices,
         historical_volumes=historical_volumes
@@ -545,24 +555,57 @@ def training(request):
     
     # Подготовка данных для графика (прогноз)
     graph_data = forecast_prices_to_graph_data(forecast_prices, historical_data, timeframe)
+
+    # Расчёт дополнительных метрик
+    # Волатильность (на основе прогнозных цен)
+    if len(forecast_prices) > 1:
+        volatility_std = np.std(forecast_prices)
+        volatility_percent = (volatility_std / price) * 100
+        if volatility_percent < 1.5:
+            volatility_level = 'Низкая'
+        elif volatility_percent < 3.5:
+            volatility_level = 'Средняя'
+        else:
+            volatility_level = 'Высокая'
+    else:
+        volatility_level = 'Низкая'
+    
+    # Уверенность берётся из метаданных прогноза
+    confidence = forecast_meta.get('confidence', 50.0)
     
     # Обработка POST-запроса на совершение сделки
     if request.method == 'POST':
         form = TrainingTradeForm(request.POST)
         if form.is_valid():
+            trade_type = form.cleaned_data['trade_type']
+            profit_loss = calculate_profit_loss(trade_type, volume, price, forecast_prices)
+            exit_price = forecast_prices[-1] if forecast_prices else price
+            
             trade = TrainingTrade.objects.create(
                 user=request.user,
                 quote=quote,
                 date=date,
                 volume=volume,
                 price=price,
-                trade_type=form.cleaned_data['trade_type'],
-                profit_loss=calculate_profit_loss(
-                    form.cleaned_data['trade_type'], volume, price, forecast_prices
-                )
+                trade_type=trade_type,
+                profit_loss=profit_loss
             )
             request.session['last_training_trade_id'] = trade.id
-            return redirect('quotes:training_result')
+            
+            # Если запрос пришёл через AJAX (как в нашем модальном окне)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'profit_loss': round(profit_loss, 2),
+                    'trade_type': trade_type,
+                    'entry_price': price,
+                    'exit_price': round(exit_price, 4),
+                    'volatility': volatility_level,
+                    'confidence': round(confidence, 1),
+                })
+            else:
+                # Обычный POST (например, если JS отключен) – редирект на страницу результата
+                return redirect('quotes:training_result')
     else:
         form = TrainingTradeForm()
     

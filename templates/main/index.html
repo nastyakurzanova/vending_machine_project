@@ -136,7 +136,7 @@
 
 {% block content %}
 <div class="hero">
-    <h1><i class="fas fa-robot"></i> Модуль торгового автомата</h1>
+    <h1> Модуль торгового автомата</h1>
     <p>Интеллектуальный помощник для тестирования торговых стратегий и совершения сделок на финансовых рынках</p>
 </div>
 
@@ -160,7 +160,6 @@
 
 <div class="card">
     <div class="card-header">
-        <i class="fas fa-rocket"></i>
         <h2>Быстрый старт</h2>
     </div>
     <div class="steps-grid">
@@ -184,7 +183,6 @@
 
 <div class="card">
     <div class="card-header">
-        <i class="fas fa-gem"></i>
         <h2>Почему выбирают нас</h2>
     </div>
     <div class="features-grid">
@@ -208,20 +206,19 @@
 
 <div class="card" style="text-align: center;">
     <div class="card-header">
-        <i class="fas fa-hand-pointer"></i>
         <h2>Готовы начать?</h2>
     </div>
     {% if not user.is_authenticated %}
         <p>Присоединяйтесь к сообществу трейдеров уже сегодня</p>
         <div class="flex-btns" style="justify-content: center;">
-            <a href="{% url 'users:register' %}" class="cta-button"><i class="fas fa-user-plus"></i> Регистрация</a>
-            <a href="{% url 'users:login' %}" class="cta-button"><i class="fas fa-sign-in-alt"></i> Вход</a>
+            <a href="{% url 'users:register' %}" class="cta-button"> Регистрация</a>
+            <a href="{% url 'users:login' %}" class="cta-button"> Вход</a>
         </div>
     {% else %}
         <p>Откройте для себя новые возможности торговли</p>
         <div class="flex-btns" style="justify-content: center;">
-            <a href="{% url 'quotes:quote_list' %}" class="cta-button"><i class="fas fa-chart-line"></i> Перейти к котировкам</a>
-            <a href="{% url 'quotes:training' %}" class="cta-button"><i class="fas fa-chart-simple"></i> Тренировка</a>
+            <a href="{% url 'quotes:quote_list' %}" class="cta-button"> Перейти к котировкам</a>
+            <a href="{% url 'quotes:training' %}" class="cta-button">Тренировка</a>
         </div>
     {% endif %}
 </div>

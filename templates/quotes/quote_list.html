@@ -91,7 +91,6 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <i class="fas fa-chart-line"></i>
         <h2>Доступные котировки</h2>
     </div>
     <div class="quotes-grid">
@@ -115,14 +114,14 @@
                     {{ quote.description|default:"Котировка для торговли" }}
                 </div>
                 <div class="quote-updated">
-                    <i class="fas fa-clock"></i> Обновлено: {{ quote.updated_at|date:"d.m.Y H:i" }}
+                   Обновлено: {{ quote.updated_at|date:"d.m.Y H:i" }}
                 </div>
                 <div class="quote-links">
                     <a href="{% url 'quotes:trade_params' quote.id %}" class="quote-link" onclick="event.stopPropagation()">
-                        Торговать <i class="fas fa-arrow-right"></i>
+                        Торговать
                     </a>
                     <a href="{% url 'quotes:realtime_chart' quote.id %}" class="quote-link" onclick="event.stopPropagation()">
-                        <i class="fas fa-chart-line"></i> График
+                        График
                     </a>
                 </div>
             </div>

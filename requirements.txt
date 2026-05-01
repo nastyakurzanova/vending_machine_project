@@ -1,0 +1,11 @@
+Django>=4.2,<6.0
+psycopg2-binary>=2.9
+djangorestframework>=3.14
+pandas>=2.0
+numpy>=1.26
+matplotlib>=3.8
+Pillow>=10.0
+python-decouple>=3.8
+whitenoise>=6.6
+yfinance>=0.2
+feedparser>=6.0

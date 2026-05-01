@@ -40,7 +40,6 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <i class="fas fa-file-pdf"></i>
         <h2>Скачать отчёт по прибыли (PDF)</h2>
     </div>
     <form method="post" class="report-form">
@@ -51,7 +50,7 @@
                 {{ field }}
             </div>
         {% endfor %}
-        <button type="submit"><i class="fas fa-download"></i> Сформировать PDF</button>
+        <button type="submit">Сформировать PDF</button>
     </form>
 </div>
 {% endblock %}

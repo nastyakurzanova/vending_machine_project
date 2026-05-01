@@ -119,14 +119,23 @@ class TimeSettingsForm(forms.Form):
 
 
 class TrainingTradeForm(forms.ModelForm):
+    trade_type = forms.ChoiceField(
+        choices=TrainingTrade.TRADE_TYPE_CHOICES,
+        widget=forms.RadioSelect,
+        label='Тип сделки'
+    )
+
     class Meta:
         model = TrainingTrade
         fields = ['trade_type', 'volume', 'price']
         widgets = {
-            'trade_type': forms.RadioSelect,
             'volume': forms.NumberInput(attrs={'step': '0.01'}),
             'price': forms.NumberInput(attrs={'step': '0.0001'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Дополнительно можно обновить CSS-классы, но не обязательно
 
 
 class RealTradeForm(forms.ModelForm):
